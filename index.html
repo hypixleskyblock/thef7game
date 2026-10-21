@@ -196,7 +196,7 @@ function newGame(m){
   window.lastRunTypes=mine.join();     // melody: rare, never more than once
   S={phase:'play', sec:0, t:0, hp:5000, maxHp:5000, mana:1000, deaths:0, falls:0, myTypes:mine,
      me:{x:95,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:95,y:270}}, fx:[], circles:[], slams:[], waves:[], cd:0, pulseCd:0, termOpen:null, bossHp:1000, bossMax:1000, mm, th:mode==='th', mode, nSec:mode==='th'?3:4, runOwners:[...Array(4)].map(()=>shuffle(['you','v','r','d'])), runNpcTypes:[...Array(4)].map(()=>[...Array(4)].map(()=>pick(BASE_TYPES))), score:0, essence:0, count:4, lastCount:5, shake:0, parts:[], healed:0, roastT:-9, dead:{}, lowT:{}};
-  S.D=mm?{gs:80,aura:720,boss:1485,slam:2.05,laser:2.6,laserDmg:480,thp:2700,npc:[8,14],mult:mode==='th'?2:1.5}:{gs:58,aura:520,boss:1100,slam:2.6,laser:3.6,laserDmg:400,thp:3200,npc:[6,12],mult:1};
+  S.D=mm?{gs:80,aura:720,boss:1485,slam:2.05,laser:2.6,laserDmg:530,thp:2700,npc:[8,14],mult:mode==='th'?2:1.5}:{gs:58,aura:520,boss:1100,slam:2.6,laser:3.6,laserDmg:440,thp:3200,npc:[6,12],mult:1};
   $('boss').style.display='none'; $('party').style.display='none'; $('chat').innerHTML='';
   loadSection(0);
 }
@@ -223,7 +223,7 @@ function loadBoss(){
   Object.assign(S.me,{x:330,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:330,y:270}});
   S.hp=S.maxHp; S.mana=1000;
   S.gold={x:640,y:270,target:'you'};
-  S.npcs=S.th?[]:['v','r','d'].map((id,k)=>({id,...TEAM[id],x:[140,110,140][k],y:[140,270,400][k],off:[-0.75,0,0.75][k],hp:S.D.thp,max:S.D.thp,shot:rand(0,.7),dead:false,healT:5,glowT:0}));
+  S.npcs=S.th?[]:['v','r','d'].map((id,k)=>({id,...TEAM[id],x:[140,110,140][k],y:[140,270,400][k],off:[-0.75,0,0.75][k],hp:S.D.thp,max:S.D.thp,shot:rand(0,.7),dead:false,healT:S.th?10:S.mm?7:6,glowT:0}));
   $('boss').style.display='block'; $('party').style.display=S.th?'none':'block';
   chat('<span class="cgo">[BOSS] Goldor</span>: <span class="cy">None of you will get past me.</span>');
   chat(S.th?'<span style="color:#d07bff">Solo boss!</span> Hit him with <b>F</b> or click (max 4 hits a second), dodge the slams and jump the shockwaves.':'<span class="cgr">Tank job:</span> stay close so Goldor hits <b>you</b>, dodge or heal the slams, and keep your team alive.');
@@ -508,7 +508,7 @@ function bossUpdate(dt){
   if(G.target==='you' && was && was!=='you') chat('<span class="cgr">You have aggro again.</span>');
   if(S.lassoT>0){ S.lassoT-=dt; const d=dist(G,me); if(d>70) moveTo(G,me.x,me.y,Math.max(500,d/0.3),dt); }
   else if(dist(G,target)>54) moveTo(G,target.x,target.y,(G.target==='you'?66:95)+(S.enraged?(S.mm?18:10):0),dt);
-  if(dist(G,target)<64){ if(target===me){ if(me.fall<=0){ S.hp-=240*dt; } } else target.hp-=650*dt; }
+  if(dist(G,target)<64){ if(target===me){ if(me.fall<=0){ S.hp-=265*dt; } } else target.hp-=715*dt; }
 
   // teammates keep range and shoot Goldor
   for(const n of alive){
@@ -520,15 +520,15 @@ function bossUpdate(dt){
     moveTo(n,G.x+Math.cos(base)*175,G.y+Math.sin(base)*175,120,dt); }
     n.x=Math.max(ROOM.x+14,Math.min(ROOM.x+ROOM.w-14,n.x)); n.y=Math.max(ROOM.y+14,Math.min(ROOM.y+ROOM.h-14,n.y));
     n.healT-=dt; n.glowT=Math.max(0,n.glowT-dt);
-    if(n.healT<=0){ n.healT=5; const amt=n.max/(S.th?16:S.mm?8:4);   // Normal 1/4, Master 1/8, Try Hard 1/16
+    if(n.healT<=0){ n.healT=S.th?10:S.mm?7:6; const amt=n.max/(S.th?8:S.mm?16:8);   // Normal 1/8 every 6s, Master 1/16 every 7s, Try Hard 1/8 every 10s
       n.hp=Math.min(n.max,n.hp+amt); n.glowT=0.9; burst(n.x,n.y,'#55ff88',12); S.fx.push({type:'dmg',x:n.x,y:n.y-30,t:0,txt:'+'+Math.round(amt)+' ❤'}); }
     n.shot-=dt; if(n.shot<=0){ n.shot=0.7; S.bossHp-=6.5; S.score+=2; S.fx.push({type:'beam',x:n.x,y:n.y,x2:G.x,y2:G.y,col:n.col,t:0}); }
   }
   // splash slam aimed at Goldor's target: telegraph, then big area damage
   S.slamT-=dt; if(S.slamT<=0){ S.slamT=S.D.slam*(S.enraged?(S.mm?0.72:0.86):1); const tg=G.target==='you'?me:target; S.slams.push({x:tg.x,y:tg.y,r:100,t:1.25}); }
   for(const s of S.slams){ s.t-=dt; if(s.t<=0 && !s.done){ s.done=true; S.fx.push({type:'slam',x:s.x,y:s.y,t:0,r:s.r}); beep(80,.25,'sawtooth',.07);
-    if(dist(me,s)<s.r && me.air<=0){ if(S.mm) S.oneTap='slam'; hurt(S.mm?S.hp+1:1250); S.shake=10; if(Math.random()<.45) roast('slam'); } else S.shake=Math.max(S.shake,4);
-    for(const n of alive) if(dist(n,s)<s.r){ n.hp-=900; burst(n.x,n.y,'#ff5533',10); S.fx.push({type:'hit',x:n.x,y:n.y-18,t:0,txt:'-900'}); } } }
+    if(dist(me,s)<s.r && me.air<=0){ if(S.mm) S.oneTap='slam'; hurt(S.mm?S.hp+1:1375); S.shake=10; if(Math.random()<.45) roast('slam'); } else S.shake=Math.max(S.shake,4);
+    for(const n of alive) if(dist(n,s)<s.r){ n.hp-=990; burst(n.x,n.y,'#ff5533',10); S.fx.push({type:'hit',x:n.x,y:n.y-18,t:0,txt:'-990'}); } } }
   S.slams=S.slams.filter(s=>!s.done||s.t>-0.3);
   // golden laser chips a random teammate
   S.laserT-=dt; if(S.laserT<=0 && alive.length){ S.laserT=S.D.laser*(S.enraged&&S.mm?0.8:1); const n=pick(alive); n.hp-=S.D.laserDmg; S.fx.push({type:'laser',x:G.x,y:G.y,x2:n.x,y2:n.y,t:0}); S.fx.push({type:'hit',x:n.x,y:n.y-18,t:0,txt:'-'+S.D.laserDmg}); beep(900,.08,'sawtooth',.03); }
@@ -536,7 +536,7 @@ function bossUpdate(dt){
   S.waveT-=dt;
   if(S.waveT<=0 && !(S.charge>0)){ S.charge=1.0; chat('<span class="cy">Goldor is charging a shockwave!</span> Get ready to jump!'); beep(120,.5,'triangle',.05); }
   if(S.charge>0){ S.charge-=dt; if(S.charge<=0){ S.waveT=S.mm?6.5:7.5; S.waves.push({x:G.x,y:G.y,r:30,hit:false}); S.shake=6; beep(90,.3,'sawtooth',.06); } }
-  for(const w of S.waves){ w.r+=230*dt; if(!w.hit && Math.abs(dist(me,w)-w.r)<16){ w.hit=true; if(me.air<=0){ if(S.mm) S.oneTap='shockwave'; hurt(S.mm?S.hp+1:800); } } }
+  for(const w of S.waves){ w.r+=230*dt; if(!w.hit && Math.abs(dist(me,w)-w.r)<16){ w.hit=true; if(me.air<=0){ if(S.mm) S.oneTap='shockwave'; hurt(S.mm?S.hp+1:880); } } }
   S.waves=S.waves.filter(w=>w.r<560);
   // healing circles
   for(const c of S.circles){ c.t-=dt; if(dist(me,c)<150) S.hp=Math.min(S.maxHp,S.hp+420*dt); for(const n of alive) if(dist(n,c)<150){ const b=n.hp; n.hp=Math.min(n.max,n.hp+420*dt); S.healed+=n.hp-b; } }
