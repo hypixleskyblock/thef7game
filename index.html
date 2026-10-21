@@ -71,7 +71,7 @@
 </head>
 <body>
 <h1>F7 · Goldor Phase</h1>
-<p class="help">Walk: <b>WASD</b> (or click / tap, if Click to move is on) · you hop gaps automatically when a platform is close (<b>Space</b> = manual jump) · <b>E</b> or click to open <b style="color:#ffaa00">your</b> terminal ·
+<p class="help">Walk: <b>WASD</b> (or click / tap, if Click to move is on) · <b>Space</b> to jump the gaps · <b>E</b> or click to open <b style="color:#ffaa00">your</b> terminal ·
   Boss: stay close to Goldor, <b>Q</b> Healing Circle, <b>R</b> Lasso (pulls Goldor to you and takes aggro), <b>F</b> or click Goldor to hit</p>
 
 <div id="wrap">
@@ -91,10 +91,11 @@
   <div id="screen">
     <h2>F7 · Goldor Phase</h2>
     <p>You are the <b class="cgo">tank</b>. Vallon's, Reborn Gold and Doggy each run to their own terminal. Yours is marked in <b class="cgo">gold</b>, and you get <b>4 different terminals</b> this run.</p>
-    <p>The terminals float over the void. Walk or click toward a platform and you <b>hop the gap automatically</b> when it's in reach; time your hops onto the <b>moving platforms</b>. Goldor's <b class="cr">red circle is instant death</b>.</p>
+    <p>The terminals float over the void. You stop at the edge of a platform. Press <b>Space</b> (or Jump) to jump the gap, and time your jumps onto the <b>moving platforms</b>. Goldor's <b class="cr">red circle is instant death</b>.</p>
     <p>In the boss fight your team does the damage. You <b>hold aggro</b> (use your <b class="cgo">Lasso</b> to yank Goldor back), take the <b class="cr">splash slams</b> and <b class="cgr">heal your team</b>.</p>
     <p class="cr">Master Mode: Goldor's slams and shockwaves one-tap you.</p>
-    <div><button class="go" id="startBtn">Normal</button> <button class="go" id="mmBtn" style="background:#7a1f1f;border-color:#e06a6a #4a1010 #4a1010 #e06a6a">Master Mode</button></div>
+    <p style="color:#d07bff">Try Hard Mode: solo. 3 rooms with 3 terminals each, all yours, while a red laser eats the room behind you. Then the Master Mode boss.</p>
+    <div><button class="go" id="startBtn">Normal</button> <button class="go" id="mmBtn" style="background:#7a1f1f;border-color:#e06a6a #4a1010 #4a1010 #e06a6a">Master Mode</button> <button class="go" id="thBtn" style="background:#3d1257;border-color:#c07bff #1e0830 #1e0830 #c07bff">Try Hard Mode</button></div>
     <p style="margin-top:14px"><label style="cursor:pointer;font-size:clamp(16px,2.4vw,22px)"><input type="checkbox" id="ctm" style="width:18px;height:18px;vertical-align:middle"> Click to move <span class="cg">(walk to wherever you click or tap)</span></label></p>
     <p id="pbLine" class="cg"></p>
   </div>
@@ -178,28 +179,38 @@ const voidBg=mkCanvas(W,H,x=>{
 let S=null, keys={}, last=0;
 const WALK=125, AIR=0.5;
 const BASE_TYPES=['panes','order','color','starts','select'];
-function newGame(mm){
-  const mine=shuffle([...BASE_TYPES]).slice(0,4);
-  if(Math.random()<0.35) mine[Math.floor(Math.random()*4)]='melody';     // melody: rare, never more than once
+const MODE_NAME={normal:'NORMAL',mm:'MASTER MODE',th:'TRY HARD MODE'};
+const TH_ROOMS=[{lay:0,spots:[0,2,3],speed:16},{lay:2,spots:[0,2,3],speed:17},{lay:3,spots:[0,2,3],speed:18}];
+function newGame(m){
+  const mode=m===true?'mm':(m==='mm'||m==='th')?m:'normal', mm=mode!=='normal';
+  const nT=mode==='th'?9:4;
+  // a fresh set of terminals for every run (never the same set as your last run); it stays the same when you die
+  let mine, tries=0;
+  do { mine=[...Array(Math.ceil(nT/5))].flatMap(()=>shuffle([...BASE_TYPES])).slice(0,nT);
+       if(Math.random()<0.35) mine[Math.floor(Math.random()*nT)]='melody'; tries++; }
+  while(mine.join()===window.lastRunTypes && tries<20);
+  window.lastRunTypes=mine.join();     // melody: rare, never more than once
   S={phase:'play', sec:0, t:0, hp:5000, maxHp:5000, mana:1000, deaths:0, falls:0, myTypes:mine,
-     me:{x:95,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:95,y:270}}, fx:[], circles:[], slams:[], waves:[], cd:0, pulseCd:0, termOpen:null, bossHp:1000, bossMax:1000, mm:!!mm, score:0, essence:0, count:4, lastCount:5, shake:0, parts:[], healed:0, roastT:-9, dead:{}, lowT:{}};
-  S.D=mm?{gs:80,aura:720,boss:1350,slam:2.05,laser:2.6,laserDmg:480,thp:2700,npc:[8,14],mult:1.5}:{gs:58,aura:520,boss:1000,slam:2.6,laser:3.6,laserDmg:400,thp:3200,npc:[6,12],mult:1};
+     me:{x:95,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:95,y:270}}, fx:[], circles:[], slams:[], waves:[], cd:0, pulseCd:0, termOpen:null, bossHp:1000, bossMax:1000, mm, th:mode==='th', mode, nSec:mode==='th'?3:4, runOwners:[...Array(4)].map(()=>shuffle(['you','v','r','d'])), runNpcTypes:[...Array(4)].map(()=>[...Array(4)].map(()=>pick(BASE_TYPES))), score:0, essence:0, count:4, lastCount:5, shake:0, parts:[], healed:0, roastT:-9, dead:{}, lowT:{}};
+  S.D=mm?{gs:80,aura:720,boss:1350,slam:2.05,laser:2.6,laserDmg:480,thp:2700,npc:[8,14],mult:mode==='th'?2:1.5}:{gs:58,aura:520,boss:1000,slam:2.6,laser:3.6,laserDmg:400,thp:3200,npc:[6,12],mult:1};
   $('boss').style.display='none'; $('party').style.display='none'; $('chat').innerHTML='';
   loadSection(0);
 }
 function moverRect(m,t){ const o=Math.sin(t*m.spd+m.ph)*m.amp; const cx=m.cx+(m.ax==='x'?o:0), cy=m.cy+(m.ax==='y'?o:0); return [cx-m.w/2,cy-m.h/2,m.w,m.h]; }
 function loadSection(i){
-  S.sec=i; S.secT=0; S.slowRoasts=0; S.auraT=0; S.gateOpen=false; S.phase='play'; S.lay=LAYOUT[i]; S.adj=buildGraph(S.lay); S.circles=[]; S.slams=[]; S.waves=[];
-  const owners=shuffle(['you','v','r','d']);
-  S.terms=S.lay.spots.map((p,k)=>({x:p[0],y:p[1],owner:owners[k],type:owners[k]==='you'?S.myTypes[i]:pick(BASE_TYPES),done:false}));
+  S.sec=i; S.secT=0; S.slowRoasts=0; S.auraT=0; S.gateOpen=false; S.phase='play'; S.lay=S.th?LAYOUT[TH_ROOMS[i].lay]:LAYOUT[i]; S.adj=buildGraph(S.lay); S.laserX=ROOM.x-30; S.laserWarn=false; S.circles=[]; S.slams=[]; S.waves=[];
+  const owners=S.runOwners[i];   // same layout for this run, even after you die
+  S.terms=S.th ? TH_ROOMS[i].spots.map((si,k)=>{ const p=S.lay.spots[si]; return {x:p[0],y:p[1],owner:'you',type:S.myTypes[i*3+k],done:false}; })
+                : S.lay.spots.map((p,k)=>({x:p[0],y:p[1],owner:owners[k],type:owners[k]==='you'?S.myTypes[i]:S.runNpcTypes[i][k],done:false}));
   Object.assign(S.me,{x:95,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:95,y:270}});
-  S.npcs=['v','r','d'].map((id,k)=>({id,...TEAM[id],x:70,y:225+k*45,state:'walk',term:S.terms.find(t=>t.owner===id),dur:rand(...S.D.npc),prog:0}));
+  S.npcs=['v','r','d'].map((id,k)=>({id,...TEAM[id],x:70,y:225+k*45,state:S.th?'away':'walk',term:S.terms.find(t=>t.owner===id),dur:rand(...S.D.npc),prog:0}));
   // essence orbs scattered on the platforms (not the start or the gate)
   const pool=S.lay.pads.filter(p=>p!==START&&p!==GATEPAD); S.orbs=[];
   for(let k=0;k<6;k++){ const [x,y,w,h]=pick(pool); S.orbs.push({x:x+10+Math.random()*(w-20),y:y+10+Math.random()*(h-20),ph:Math.random()*6}); }
   S.gold={x:S.lay.path[0][0],y:S.lay.path[0][1],wp:1,path:S.lay.path};
   const nm={panes:'Correct all the panes',order:'Click in order',color:'Change all to same color',starts:'What starts with',select:'Select all the items',melody:'Melody'}[S.myTypes[i]];
-  chat(`<span class="cy">[Section ${i+1}/4]</span> Your terminal: <span class="cgo">${nm}</span>. Jump to it!`);
+  if(S.th) chat(`<span class="cy">[Room ${i+1}/3]</span> <span style="color:#d07bff">Solo!</span> Do all <b>3 terminals</b> before the <span class="cr">red laser</span> eats you. Closest first!`);
+  else chat(`<span class="cy">[Section ${i+1}/4]</span> Your terminal: <span class="cgo">${nm}</span>. Jump to it!`);
   if(i>0||Math.random()<.6) setTimeout(()=>roast('start'),900);
   setButtons();
 }
@@ -244,15 +255,17 @@ function lineGap(A,B){ const a=ctr(A), b=ctr(B), L=Math.hypot(b.x-a.x,b.y-a.y); 
 function buildGraph(L){
   const n=L.pads.length+L.movers.length, adj=[...Array(n)].map(()=>[]);
   const at=(i,t)=>i<L.pads.length?L.pads[i]:moverRect(L.movers[i-L.pads.length],t);
-  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){ let ok=false;
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){ let ok=false; if(i>=L.pads.length&&j>=L.pads.length) continue;   // never plan a hop between two moving platforms if(i>=L.pads.length&&j>=L.pads.length) continue;   // never plan a hop between two moving platforms
     const samples=(i>=L.pads.length||j>=L.pads.length)?24:1;
     for(let k=0;k<samples&&!ok;k++){ const t=k*0.37; if(lineGap(at(i,t),at(j,t))<=118) ok=true; }
     if(ok){ adj[i].push(j); adj[j].push(i); } }
   return adj; }
 function route(from,to){ if(from<0||to<0) return null; if(from===to) return [];
-  const prev=new Map([[from,-1]]), q=[from];
-  while(q.length){ const i=q.shift(); for(const j of S.adj[i]) if(!prev.has(j)){ prev.set(j,i); if(j===to){ const path=[j]; let k=i; while(k!==from){ path.unshift(k); k=prev.get(k); } return path; } q.push(j); } }
-  return null; }
+  // shortest walking distance between platform centres (Dijkstra)
+  const R=allRects(), c=R.map(ctr), D=R.map(()=>Infinity), prev=R.map(()=>-1), done=R.map(()=>false); D[from]=0;
+  for(;;){ let i=-1; for(let k=0;k<R.length;k++) if(!done[k]&&D[k]<Infinity&&(i<0||D[k]<D[i])) i=k; if(i<0||i===to) break; done[i]=true;
+    for(const j of S.adj[i]){ const nd=D[i]+Math.hypot(c[i].x-c[j].x,c[i].y-c[j].y)+20; if(nd<D[j]){ D[j]=nd; prev[j]=i; } } }
+  if(D[to]===Infinity) return null; const path=[]; for(let k=to;k!==from;k=prev[k]) path.unshift(k); return path; }
 function setDest(x,y){ const me=S.me; me.tx=x; me.ty=y; me.path=route(padAt(me),padAt({x,y}))||[]; }
 function onStatic(p){ for(const [x,y,w,h] of S.lay.pads) if(p.x>=x+8&&p.x<=x+w-8&&p.y>=y+8&&p.y<=y+h-8) return true; return false; }
 
@@ -285,8 +298,8 @@ function completeTerm(t,who,col){
   if(t.done) return; t.done=true;
   for(const n of S.npcs) if(n.term===t && n.state!=='gate') n.state='gate';
   if(who!=='You') S.score+=25; burst(t.x,t.y,col,16);
-  chat(`<span style="color:${col}">${who}</span> activated a terminal! (<span class="cgr">${termCount()}</span>/4)`); beep(880,.1); beep(1320,.12,'square',.03);
-  if(termCount()===4){ S.gateOpen=true; setTimeout(()=>chat('<span class="cgr">The gate has been opened!</span> Jump to the right ➜'),350); setTimeout(()=>beep(660,.25,'triangle',.07),300); }
+  chat(`<span style="color:${col}">${who}</span> activated a terminal! (<span class="cgr">${termCount()}</span>/${S.terms.length})`); beep(880,.1); beep(1320,.12,'square',.03);
+  if(termCount()===S.terms.length){ S.gateOpen=true; setTimeout(()=>chat('<span class="cgr">The gate has been opened!</span> Jump to the right ➜'),350); setTimeout(()=>beep(660,.25,'triangle',.07),300); }
 }
 const ITEMS=[['Stone','#8a8a8a'],['Sand','#e3d39a'],['Sugar','#f4f4f4'],['Slime Ball','#7fd06a'],['String','#dddddd'],['Snowball','#eef8ff'],['Sponge','#d6c84a'],
   ['Apple','#d32f2f'],['Arrow','#bbbbbb'],['Anvil','#4a4a4a'],['Bread','#c8913c'],['Bone','#eee6d0'],['Book','#8b5a2b'],['Bucket','#c0c0c0'],
@@ -351,15 +364,18 @@ function openTerm(t){
   else if(t.type==='melody'){
     setTitle('Click the button on time!'); grid.style.gridTemplateColumns='repeat(6,auto)';
     const target=Math.floor(Math.random()*5), rows=[]; let row=0, pos=0, dir=1;
+    // every row starts at the end farthest from the purple column and moves toward it
+    const restart=()=>{ if(target<2){ pos=4; dir=-1; } else { pos=0; dir=1; } clearInterval(S.termTick); S.termTick=setInterval(step,260); };
+    const step=()=>{ if(row>=4) return; pos+=dir; if(pos>4){ pos=3; dir=-1; } if(pos<0){ pos=1; dir=1; } paint(); };
     for(let r=0;r<4;r++){ const cs=[]; for(let c=0;c<5;c++) cs.push(cell('', c===target?'#9c27b0':'#e0e0e0'));
       const btn=cell('▶','#6d4c41',()=>{ if(r!==row) return;
-        if(pos===target){ cs.forEach(x=>x.style.background='#2e7d32'); beep(700+row*120,.08); row++; pos=0; dir=1; if(row>=4) win(); }
-        else { shake(btn); pos=0; dir=1; } });
+        if(pos===target){ cs.forEach(x=>x.style.background='#2e7d32'); beep(700+row*120,.08); row++; if(row>=4) win(); else { restart(); paint(); } }
+        else { shake(btn); restart(); paint(); } });
       rows.push({cs,btn}); }
     const paint=()=>{ rows.forEach((R,r)=>{ if(r<row) return; R.cs.forEach((x,c)=>x.style.background=(r===row&&c===pos)?'#76ff03':(c===target?'#9c27b0':'#e0e0e0'));
       R.btn.style.background=r===row?'#4caf50':'#6d4c41'; }); };
     paint();
-    S.termTick=setInterval(()=>{ if(row>=4) return; pos+=dir; if(pos>4){ pos=3; dir=-1; } if(pos<0){ pos=1; dir=1; } paint(); }, 260);
+    restart(); paint();
     addSub('Hit ▶ when the green pane is on the purple column.');
   }
   beep(520,.05);
@@ -435,10 +451,8 @@ function update(dt){
       if(step>0){ const nx=me.x+ux*step, ny=me.y+uy*step;
         if(me.air<=0 && !onGround({x:nx,y:ny})){
           // about to step off a platform: hop to the next one if it's in reach, otherwise stop at the edge
-          const Lnd=findLanding(me.x,me.y,ux,uy);
-          if(Lnd){ me.air=AIR; me.jx=Lnd.x; me.jy=Lnd.y; me.jsp=Math.max(60,Math.hypot(Lnd.x-me.x,Lnd.y-me.y)/AIR); beep(330,.06,'triangle',.04); }
-          else if(me.path&&me.path.length&&(me.path[0]>=S.lay.pads.length||padAt(me)>=S.lay.pads.length)){ /* wait for the moving platform to line up */ }
-          else { me.tx=null; me.path=[]; if(S.t-(S.edgeT||-9)>3){ S.edgeT=S.t; chat('<span class="cg">Too far to jump from here. Try a closer platform.</span>'); } }
+          // no auto-jump: stop at the edge, the player presses Space to jump the gap
+          if(S.t-(S.edgeT||-9)>4){ S.edgeT=S.t; chat('<span class="cg">Edge! Press <b>Space</b> (or Jump) to jump the gap.</span>'); }
         } else { me.x=nx; me.y=ny; } }
     }
     if(me.auto && dist(me,me.auto)<70 && me.air<=0 && onGround(me)){ const t=me.auto; me.auto=null; openTerm(t); }
@@ -446,7 +460,7 @@ function update(dt){
   if(me.air>0){ me.air-=dt; if(me.air<=0) me.jx=null; }
   const inGap=me.y>GATE.y1+12&&me.y<GATE.y2-12;
   me.x=Math.max(ROOM.x+12,Math.min((S.gateOpen&&inGap)?W+20:ROOM.x+ROOM.w-12,me.x)); me.y=Math.max(ROOM.y+12,Math.min(ROOM.y+ROOM.h-12,me.y));
-  if(S.gateOpen && me.x>ROOM.x+ROOM.w+6){ S.score+=200; if(S.sec<3){ beep(500,.15,'triangle'); loadSection(S.sec+1); } else loadBoss(); return; }
+  if(S.gateOpen && me.x>ROOM.x+ROOM.w+6){ S.score+=200; if(S.sec<S.nSec-1){ beep(500,.15,'triangle'); loadSection(S.sec+1); } else loadBoss(); return; }
   if(me.air<=0 && me.fall<=0){
     if(onGround(me)){ if(onStatic(me)) me.safe={x:me.x,y:me.y}; }
     else { me.fall=0.5; S.falls++; closeTerm(false); hurt(700); S.score=Math.max(0,S.score-150); S.shake=7; chat('<span class="cr">You fell into the void!</span> -700 ❤'); beep(220,.3,'sawtooth',.05); roast('fall'); }
@@ -460,6 +474,11 @@ function update(dt){
     }
     S.secT+=dt; const mineT=S.terms.find(t=>t.owner==='you');
     if(mineT&&!mineT.done&&S.secT>(S.slowRoasts?55:32)+S.slowRoasts*20&&S.slowRoasts<3){ S.slowRoasts++; roast('slow',null,true); }
+    if(S.th && S.secT>2.5){ S.laserX+=TH_ROOMS[S.sec].speed*0.999*dt;   // 0.1% slower
+      if(Math.random()<dt*25) S.parts.push({x:S.laserX,y:ROOM.y+Math.random()*ROOM.h,vx:-20-Math.random()*60,vy:(Math.random()-.5)*60,life:.5,col:'#ff3322'});
+      if(me.x<S.laserX+4 && me.fall<=0){ S.killedBy='laser'; S.shake=14; burst(me.x,me.y,'#ff2200',40); beep(60,.6,'sawtooth',.08); S.hp=0; return endRun(false,'tank'); }
+      if(!S.laserWarn && S.laserX>me.x-90){ S.laserWarn=true; chat('<span class="cr">The laser is right behind you! MOVE!</span>'); }
+      if(S.laserX<me.x-150) S.laserWarn=false; }
     // essence pickups
     for(const o of S.orbs) if(!o.got && me.air<=0 && Math.hypot(me.x-o.x,me.y-o.y)<24){ o.got=true; S.essence++; S.score+=50; burst(o.x,o.y,'#d9a8ff',14); popScore(o.x,o.y,'+50 ✦'); beep(1200,.06,'sine',.05); beep(1600,.08,'sine',.04); }
     const G=S.gold, tg=G.path[G.wp]; if(moveTo(G,tg[0],tg[1],S.D.gs,dt)) G.wp=(G.wp+1)%G.path.length;
@@ -658,7 +677,7 @@ function draw(){
   drawScene(); g.restore();
   if(S&&S.count>0){ const n=Math.ceil(S.count); g.save(); g.fillStyle='rgba(0,0,0,.35)'; g.fillRect(0,0,W,H);
     g.font=`bold ${150+((S.count%1)*60)}px VT323, monospace`; g.textAlign='center'; g.fillStyle=n<=1?'#55ff55':'#ffcc33'; g.shadowColor='#000'; g.shadowBlur=12;
-    g.fillText(n<=1?'GO!':String(n-1),W/2,H/2+50); g.font='bold 30px VT323, monospace'; g.fillStyle='#fff'; g.fillText(S.mm?'MASTER MODE':'NORMAL',W/2,H/2-90); g.restore(); }
+    g.fillText(n<=1?'GO!':String(n-1),W/2,H/2+50); g.font='bold 30px VT323, monospace'; g.fillStyle='#fff'; g.fillText(MODE_NAME[S.mode],W/2,H/2-90); g.restore(); }
 }
 function drawScene(){
   g.drawImage(voidBg,0,0);
@@ -677,6 +696,11 @@ function drawScene(){
     else { g.fillStyle='#22222a'; g.fillRect(ROOM.x+ROOM.w-2,GATE.y1,W,GATE.y2-GATE.y1); g.fillStyle='#8a8a96'; for(let y=GATE.y1+6;y<GATE.y2;y+=10) g.fillRect(ROOM.x+ROOM.w-2,y,40,3); }
   }
   for(const t of S.terms) drawTerm(t);
+  if(S.th && S.phase==='play' && S.laserX>0){ const lx=S.laserX, now=performance.now();
+    g.save(); const zg=g.createLinearGradient(0,0,lx,0); zg.addColorStop(0,'rgba(120,0,0,.75)'); zg.addColorStop(1,`rgba(255,20,0,${.45+.1*Math.sin(now/90)})`);
+    g.fillStyle=zg; g.fillRect(0,0,lx,H);
+    g.globalAlpha=.25; g.fillStyle='#ff6a3a'; for(let i=0;i<14;i++){ const yy=(now/7+i*41)%H; g.fillRect(0,yy,lx,2); } g.restore();
+    g.save(); g.shadowColor='#ff1a00'; g.shadowBlur=30; g.fillStyle='rgba(255,40,20,.9)'; g.fillRect(lx-5,0,10,H); g.fillStyle='#fff3e0'; g.fillRect(lx-1.5,0,3,H); g.restore(); }
   if(S.phase==='play') for(const o of S.orbs) if(!o.got){ const b=Math.sin(performance.now()/300+o.ph)*3;
     g.save(); g.shadowColor='#c08cff'; g.shadowBlur=14; g.fillStyle=g.createRadialGradient(o.x-2,o.y-2+b,1,o.x,o.y+b,8);
     g.fillStyle='#e6d0ff'; g.beginPath(); g.arc(o.x,o.y+b,6,0,7); g.fill(); g.fillStyle='#9d5cff'; g.beginPath(); g.arc(o.x,o.y+b,3,0,7); g.fill(); g.restore(); }
@@ -688,7 +712,7 @@ function drawScene(){
   for(const w of S.waves){ g.save(); g.strokeStyle='rgba(255,150,30,.85)'; g.lineWidth=10; g.shadowColor='#ff8800'; g.shadowBlur=14; g.beginPath(); g.arc(w.x,w.y,w.r,0,7); g.stroke(); g.restore(); }
   for(const n of (S.phase==='play'?S.npcs:[])) if(n.state==='work'){ g.fillStyle='#000'; g.fillRect(n.x-20,n.y+18,40,6); g.fillStyle=n.col; g.fillRect(n.x-19,n.y+19,38*n.prog,4); }
   // people + Goldor, sorted by depth
-  const ents=[...S.npcs.map(n=>{ n.hop=S.phase==='play'&&!onGround(n,10); return {y:n.y,f:()=>drawPerson(n,n.col,n.body,n.trim,n.name,false,
+  const ents=[...S.npcs.filter(n=>n.state!=='away').map(n=>{ n.hop=S.phase==='play'&&!onGround(n,10); return {y:n.y,f:()=>drawPerson(n,n.col,n.body,n.trim,n.name,false,
       S.phase==='boss'&&!n.dead?(yy,s)=>{ g.fillStyle='#000'; g.fillRect(n.x-18,yy+s/2+4,36,5); g.fillStyle=n.hp/n.max<.35?'#ff5555':'#55ff55'; g.fillRect(n.x-17,yy+s/2+5,34*n.hp/n.max,3); }:null)}; }),
     {y:S.me.y,f:()=>drawPerson(S.me,TEAM.you.col,TEAM.you.body,TEAM.you.trim,'You',true)},
     {y:S.gold.y,f:()=>{ if(S.enraged&&S.phase==='boss'){ g.save(); g.fillStyle=`rgba(255,40,20,${.18+.1*Math.sin(performance.now()/90)})`; g.beginPath(); g.arc(S.gold.x,S.gold.y,62,0,7); g.fill(); g.restore(); } if(S.charge>0&&S.phase==='boss'){ const k=1-S.charge; g.save(); g.strokeStyle=`rgba(255,160,40,${.5+.5*Math.sin(performance.now()/60)})`; g.lineWidth=6; g.beginPath(); g.arc(S.gold.x,S.gold.y,90-k*50,0,7); g.stroke();
@@ -717,8 +741,8 @@ function drawScene(){
 }
 function fmt(t){ const m=Math.floor(t/60), s=(t%60).toFixed(1).padStart(4,'0'); return `${m}:${s}`; }
 function hud(){
-  $('top').innerHTML=S.phase==='boss'?'<span class="cgo">Goldor</span> · Hold aggro & heal':`<span class="cgo">Goldor Phase</span> · Section <span class="cy">${S.sec+1}</span>/4 · Terminals <span class="cgr">${termCount()}</span>/4`;
-  $('timer').innerHTML=`${fmt(S.t)} &nbsp;<span class="cgo">★ ${S.score}</span> &nbsp;<span class="cp">✦ ${S.essence}</span>${S.mm?' &nbsp;<span class="cr">MM</span>':''}`;
+  $('top').innerHTML=S.phase==='boss'?'<span class="cgo">Goldor</span> · Hold aggro & heal':`<span class="cgo">Goldor Phase</span> · ${S.th?'Room':'Section'} <span class="cy">${S.sec+1}</span>/${S.nSec} · Terminals <span class="cgr">${termCount()}</span>/${S.terms.length}`;
+  $('timer').innerHTML=`${fmt(S.t)} &nbsp;<span class="cgo">★ ${S.score}</span> &nbsp;<span class="cp">✦ ${S.essence}</span>${S.th?' &nbsp;<span style="color:#d07bff">TH</span>':S.mm?' &nbsp;<span class="cr">MM</span>':''}`;
   $('hpTxt').textContent=`${Math.ceil(S.hp)}/${S.maxHp} ❤   ·   ${Math.floor(S.mana)}/1000 ✎`;
   $('hpBar').style.transform=`scaleX(${S.hp/S.maxHp})`; $('manaBar').style.transform=`scaleX(${S.mana/1000})`;
   $('bossHp').style.transform=`scaleX(${Math.max(0,S.bossHp/S.bossMax)})`;
@@ -736,30 +760,31 @@ function endRun(won,why){
     const timeB=Math.max(0,Math.round((240-S.t)*12)), healB=Math.round(S.healed/20), aliveB=alive*500;
     const total=Math.round((S.score+2000+timeB+healB+aliveB-S.deaths*500)*S.D.mult);
     const grade=total>=9000?'S+':total>=7000?'S':total>=5000?'A':total>=3000?'B':'C';
-    const key=S.mm?'mm':'normal', pb=loadPB(), isPB=!pb[key]||total>pb[key].score; if(isPB){ pb[key]={score:total,t:S.t}; savePB(pb); }
+    const key=S.mode, pb=loadPB(), isPB=!pb[key]||total>pb[key].score; if(isPB){ pb[key]={score:total,t:S.t}; savePB(pb); }
     const fan=pick(S.npcs.filter(n=>!n.dead).concat(S.npcs).slice(0,3));
     const quote=S.falls+S.deaths>=4?pick(["we won but you fell like 10 times","carried by us, not gonna lie","GG but practice your parkour"]):pick(["GG tank carried 🔥","clean run","we actually did it","best tank in the guild"]);
     sc.innerHTML=`<h2>Goldor defeated!</h2>
-      <p>${S.mm?'<span class="cr">MASTER MODE</span> · ':''}Time <span class="cy">${fmt(S.t)}</span> · Essence <span class="cp">✦ ${S.essence}</span> · Falls <span class="cr">${S.falls}</span> · Deaths <span class="cr">${S.deaths}</span> · Team alive <span class="cgr">${alive}/3</span></p>
-      <p class="cg">Run ${S.score} + Kill 2000 + Time ${timeB} + Heals ${healB} + Team ${aliveB}${S.deaths?` − Deaths ${S.deaths*500}`:''}${S.mm?' × 1.5':''}</p>
+      <p>${S.mm?`<span class="cr">${MODE_NAME[S.mode]}</span> · `:''}Time <span class="cy">${fmt(S.t)}</span> · Essence <span class="cp">✦ ${S.essence}</span> · Falls <span class="cr">${S.falls}</span> · Deaths <span class="cr">${S.deaths}</span> · Team alive <span class="cgr">${alive}/3</span></p>
+      <p class="cg">Run ${S.score} + Kill 2000 + Time ${timeB} + Heals ${healB} + Team ${aliveB}${S.deaths?` − Deaths ${S.deaths*500}`:''}${S.D.mult>1?' × '+S.D.mult:''}</p>
       <p>Score <span class="cgo" style="font-size:1.5em">★ ${total}</span> · Grade <span class="cgo" style="font-size:1.6em">${grade}</span> ${isPB?'<span class="cgr">NEW PERSONAL BEST!</span>':`<span class="cg">PB ★ ${pb[key].score}</span>`}</p>
       <p><span class="cb">Party &gt;</span> <span style="color:${fan.col}">${fan.name}</span>: ${quote}</p>
       <button class="go" id="again">Run it again</button> <button class="go" id="menu" style="background:#3a3a46;border-color:#8a8a9a #22222a #22222a #8a8a9a">Menu</button>`;
-    $('again').onclick=()=>{ sc.style.display='none'; newGame(S.mm); }; $('menu').onclick=()=>location.reload(); beep(523,.15,'triangle'); setTimeout(()=>beep(784,.3,'triangle'),160); }
+    $('again').onclick=()=>{ sc.style.display='none'; newGame(S.mode); }; $('menu').onclick=()=>location.reload(); beep(523,.15,'triangle'); setTimeout(()=>beep(784,.3,'triangle'),160); }
   else { S.deaths++;
-    const msg=S.killedBy==='aura'?'You stepped into Goldor\'s red circle. That is instant death! Wait for him to walk past, or jump over the edge of it.':S.oneTap?`Goldor one-tapped you with his ${S.oneTap}. In Master Mode every slam and shockwave is instant death, so dodge the red circles and jump the waves.`:why==='team'?'Your whole team died. Hold aggro and heal them!':(S.wasBoss?'Goldor crushed you. Heal through the slams and jump the shockwaves.':'You died in section '+(S.sec+1)+'. Watch the void and his red aura.');
-    const r=pick(S.npcs.filter(n=>!n.dead).concat(S.npcs).slice(0,3)), line=S.killedBy==='aura'?pick(["you walked INTO the red circle 💀","bro hugged Goldor","the circle is red for a reason","instant L"]):S.oneTap?pick(["one tapped 💀💀","bro got deleted","that was a one shot and you stood in it","Master Mode said no"]):pick(why==='team'?["you had ONE job","the healer was the problem","we're never queueing with you again (jk)"]:["skill issue 💀","maybe try Normal mode lol","the tank died. the TANK.","bro tanked the floor instead","uninstall? (jk) (unless?)"]);
+    const msg=S.killedBy==='laser'?'The red laser ate you. Do the closest terminal first and keep moving right!':S.killedBy==='aura'?'You stepped into Goldor\'s red circle. That is instant death! Wait for him to walk past, or jump over the edge of it.':S.oneTap?`Goldor one-tapped you with his ${S.oneTap}. In Master Mode every slam and shockwave is instant death, so dodge the red circles and jump the waves.`:why==='team'?'Your whole team died. Hold aggro and heal them!':(S.wasBoss?'Goldor crushed you. Heal through the slams and jump the shockwaves.':'You died in section '+(S.sec+1)+'. Watch the void and his red aura.');
+    const r=pick(S.npcs.filter(n=>!n.dead).concat(S.npcs).slice(0,3)), line=S.killedBy==='laser'?pick(["the laser was SLOW and you still got caught 💀","outran by a laser","bro got lasered","try hard? more like try harder"]):S.killedBy==='aura'?pick(["you walked INTO the red circle 💀","bro hugged Goldor","the circle is red for a reason","instant L"]):S.oneTap?pick(["one tapped 💀💀","bro got deleted","that was a one shot and you stood in it","Master Mode said no"]):pick(why==='team'?["you had ONE job","the healer was the problem","we're never queueing with you again (jk)"]:["skill issue 💀","maybe try Normal mode lol","the tank died. the TANK.","bro tanked the floor instead","uninstall? (jk) (unless?)"]);
     S.score=Math.max(0,S.score-500);
     sc.innerHTML=`<h2 style="color:#ff5555">${why==='team'?'Wipe!':'You died!'}</h2><p>${msg}</p><p><span class="cb">Party &gt;</span> <span style="color:${r.col}">${r.name}</span>: ${line}</p><p class="cg">−500 ★</p><button class="go" id="again">${S.wasBoss?'Retry boss':'Respawn'}</button>`;
     $('again').onclick=()=>{ sc.style.display='none'; S.hp=S.maxHp; S.mana=1000; S.oneTap=null; S.killedBy=null; if(S.wasBoss) loadBoss(); else loadSection(S.sec); }; beep(110,.5,'sawtooth',.06); }
 }
 $('startBtn').onclick=()=>{ $('screen').style.display='none'; beep(440,.08); newGame(false); };
-$('mmBtn').onclick=()=>{ $('screen').style.display='none'; beep(330,.12); newGame(true); };
+$('mmBtn').onclick=()=>{ $('screen').style.display='none'; beep(330,.12); newGame('mm'); };
+$('thBtn').onclick=()=>{ $('screen').style.display='none'; beep(220,.15); newGame('th'); };
 let CTM=false; try{ CTM=localStorage.getItem('goldorCTM')==='on'; }catch(e){}
 $('ctm').checked=CTM; $('ctm').onchange=e=>{ CTM=e.target.checked; try{ localStorage.setItem('goldorCTM',CTM?'on':'off'); }catch(_){} };
 function loadPB(){ try{ return JSON.parse(localStorage.getItem('goldorPB_v1'))||{}; }catch(e){ return {}; } }
 function savePB(o){ try{ localStorage.setItem('goldorPB_v1',JSON.stringify(o)); }catch(e){} }
-(()=>{ const pb=loadPB(); const parts=[]; if(pb.normal) parts.push(`Normal PB: ★ ${pb.normal.score} (${fmt(pb.normal.t)})`); if(pb.mm) parts.push(`Master Mode PB: ★ ${pb.mm.score} (${fmt(pb.mm.t)})`); $('pbLine').textContent=parts.join('  ·  '); })();
+(()=>{ const pb=loadPB(); const parts=[]; if(pb.normal) parts.push(`Normal PB: ★ ${pb.normal.score} (${fmt(pb.normal.t)})`); if(pb.mm) parts.push(`Master Mode PB: ★ ${pb.mm.score} (${fmt(pb.mm.t)})`); if(pb.th) parts.push(`Try Hard PB: ★ ${pb.th.score} (${fmt(pb.th.t)})`); $('pbLine').textContent=parts.join('  ·  '); })();
 
 function loop(ts){
   requestAnimationFrame(loop);
