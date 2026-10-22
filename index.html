@@ -30,7 +30,7 @@
   #manaBar { background:linear-gradient(#7fe9ff,#1f8fbf); }
   #boss { left:50%; top:1.2%; transform:translateX(-50%); width:min(46%,380px); text-align:center; display:none; color:#ffaa00; }
   #boss .bar > i { background:linear-gradient(#ffe066,#d4a017); }
-  #party { right:1.2%; top:9%; width:min(22%,190px); display:none; font-size:clamp(11px,1.6vw,16px); }
+  #party { right:1.2%; top:20%; width:min(22%,190px); display:none; font-size:clamp(11px,1.6vw,16px); }
   #party .bar { height:clamp(5px,.9vw,8px); margin:1px 0 4px; }
   #party .bar > i { background:linear-gradient(#7dff7d,#2e9e2e); }
   .cy { color:#ffff55; } .cg { color:#aaaaaa; } .cgr { color:#55ff55; } .cr { color:#ff5555; } .cgo { color:#ffaa00; } .ca { color:#55ffff; } .cp { color:#ff55ff; }
@@ -38,6 +38,7 @@
   /* touch buttons */
   #resetBtn { position:absolute; right:1.2%; top:7.5%; display:none; font:inherit; font-size:clamp(12px,1.8vw,17px); color:#fff; background:rgba(120,25,25,.85);
               border:2px solid #ff7a7a; border-radius:6px; padding:2px 10px; cursor:pointer; z-index:2; }
+  #musBtn { position:absolute; right:1.2%; top:13.5%; display:none; font:inherit; font-size:clamp(11px,1.6vw,15px); color:#fff; background:rgba(40,30,70,.85); border:2px solid #b28cff; border-radius:6px; padding:1px 8px; cursor:pointer; z-index:2; }
   #resetBtn:hover { background:rgba(170,35,35,.95); }
   #btns { position:absolute; right:1.2%; bottom:3%; display:flex; gap:6px; }
   #btns button { font:inherit; font-size:clamp(13px,2vw,19px); color:#fff; background:rgba(30,30,36,.82); border:2px solid #6a6a78;
@@ -75,7 +76,7 @@
 <body>
 <h1>F7 · Goldor Phase</h1>
 <p class="help">Walk: <b>WASD</b> (or click / tap, if Click to move is on) · <b>Space</b> to jump the gaps · <b>E</b> or click to open <b style="color:#ffaa00">your</b> terminal ·
-  Boss: stay close to Goldor, <b>Q</b> Healing Circle, <b>R</b> Lasso (pulls Goldor to you and takes aggro), <b>F</b> or click Goldor to hit</p>
+  <b>M</b> music on/off · Boss: stay close to Goldor, <b>Q</b> Healing Circle, <b>R</b> Lasso (pulls Goldor to you and takes aggro), <b>F</b> or click Goldor to hit</p>
 
 <div id="wrap">
   <canvas id="game" width="960" height="540"></canvas>
@@ -90,6 +91,7 @@
     <div class="bar" style="height:clamp(5px,.9vw,8px);background:#0d1f2a"><i id="manaBar"></i></div>
   </div>
   <button id="resetBtn" title="Start a brand-new run">↺ Reset run</button>
+  <button id="musBtn" title="Music on/off (M)">♪ Music on</button>
   <div id="btns"></div>
   <div id="term"></div>
   <div id="screen">
@@ -97,10 +99,11 @@
     <p>You are the <b class="cgo">tank</b>. Vallon's, Reborn Gold and Doggy each run to their own terminal. Yours is marked in <b class="cgo">gold</b>, and you get <b>4 different terminals</b> this run.</p>
     <p>The terminals float over the void. You stop at the edge of a platform. Press <b>Space</b> (or Jump) to jump the gap, and time your jumps onto the <b>moving platforms</b>. Goldor's <b class="cr">red circle is instant death</b>.</p>
     <p>In the boss fight your team does the damage. You <b>hold aggro</b> (use your <b class="cgo">Lasso</b> to yank Goldor back), take the <b class="cr">splash slams</b> and <b class="cgr">heal your team</b>.</p>
-    <p class="cr">Master Mode: Goldor's slams and shockwaves one-tap you.</p>
+    <p class="cr">Goldor's big gold shockwave kills you instantly in every mode, so jump over it! Master Mode: his slams one-tap you too.</p>
     <p style="color:#d07bff">Try Hard Mode: solo. 3 rooms with 3 terminals each, all yours, while a red laser eats the room behind you. Then the Master Mode boss.</p>
     <div><button class="go" id="startBtn">Normal</button> <button class="go" id="mmBtn" style="background:#7a1f1f;border-color:#e06a6a #4a1010 #4a1010 #e06a6a">Master Mode</button> <button class="go" id="thBtn" style="background:#3d1257;border-color:#c07bff #1e0830 #1e0830 #c07bff">Try Hard Mode</button></div>
     <p style="margin-top:14px"><label style="cursor:pointer;font-size:clamp(16px,2.4vw,22px)"><input type="checkbox" id="ctm" style="width:18px;height:18px;vertical-align:middle"> Click to move <span class="cg">(walk to wherever you click or tap)</span></label></p>
+    <p><label style="cursor:pointer;font-size:clamp(16px,2.4vw,22px)"><input type="checkbox" id="musChk" style="width:18px;height:18px;vertical-align:middle"> Music <span class="cg">(original dark dungeon soundtrack)</span></label></p>
     <p id="pbLine" class="cg"></p>
   </div>
 </div>
@@ -117,6 +120,75 @@ const poss=n=>n.endsWith("'s")?n:n+"'s";
 let AC=null;
 function beep(f,d=0.08,type='square',v=0.05){ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); const o=AC.createOscillator(), gn=AC.createGain();
   o.type=type; o.frequency.value=f; gn.gain.value=v; gn.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d); o.connect(gn); gn.connect(AC.destination); o.start(); o.stop(AC.currentTime+d); }catch(e){} }
+
+
+/* ---------- original soundtrack: made for this game, generated live ---------- */
+const MUS={on:true,kind:null,want:null,timer:null,step:0,next:0,master:null,noise:null};
+try{ MUS.on=localStorage.getItem('goldorMusic')!=='off'; }catch(e){}
+const mf=n=>440*Math.pow(2,(n-69)/12);
+function musCtx(){ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume();
+  if(!MUS.master){ MUS.master=AC.createGain(); MUS.master.gain.value=0.7; const comp=AC.createDynamicsCompressor(); comp.threshold.value=-10; comp.ratio.value=4; MUS.master.connect(comp); comp.connect(AC.destination);   // louder, with a limiter so it never distorts
+    const len=Math.floor(AC.sampleRate*0.3), buf=AC.createBuffer(1,len,AC.sampleRate), d=buf.getChannelData(0); for(let i=0;i<len;i++) d[i]=Math.random()*2-1; MUS.noise=buf; } }
+function tone(f,t,dur,type,vol){ const o=AC.createOscillator(), gn=AC.createGain(); o.type=type; o.frequency.value=f;
+  gn.gain.setValueAtTime(0.0001,t); gn.gain.exponentialRampToValueAtTime(vol,t+0.008); gn.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(gn); gn.connect(MUS.master); o.start(t); o.stop(t+dur+0.02); }
+function kick(t,v=0.9){ const o=AC.createOscillator(), gn=AC.createGain(); o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(40,t+0.12);
+  gn.gain.setValueAtTime(v,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+0.16); o.connect(gn); gn.connect(MUS.master); o.start(t); o.stop(t+0.18); }
+function noiseHit(t,dur,freq,vol){ const s=AC.createBufferSource(); s.buffer=MUS.noise; const f=AC.createBiquadFilter(); f.type='highpass'; f.frequency.value=freq;
+  const gn=AC.createGain(); gn.gain.setValueAtTime(vol,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+dur); s.connect(f); f.connect(gn); gn.connect(MUS.master); s.start(t); s.stop(t+dur+0.02); }
+// dark orchestral dungeon palette: string ostinato, choir pads, brass stabs, timpani, war drums, horn melody (all original)
+function voice(f,t,dur,o){ const {type='sawtooth',vol=.1,cut=1200,cutEnd=null,att=.01,rel=null,det=0}=o||{};
+  const flt=AC.createBiquadFilter(); flt.type='lowpass'; flt.frequency.setValueAtTime(cut,t); if(cutEnd) flt.frequency.exponentialRampToValueAtTime(cutEnd,t+dur);
+  const gn=AC.createGain(); gn.gain.setValueAtTime(0.0001,t); gn.gain.exponentialRampToValueAtTime(vol,t+att); gn.gain.exponentialRampToValueAtTime(0.0001,t+(rel||dur));
+  flt.connect(gn); gn.connect(MUS.master);
+  for(const d of det?[-det,det]:[0]){ const osc=AC.createOscillator(); osc.type=type; osc.frequency.value=f; osc.detune.value=d; osc.connect(flt); osc.start(t); osc.stop(t+(rel||dur)+.05); } }
+function timpani(t,v=.8,f0=74){ const o=AC.createOscillator(), gn=AC.createGain(); o.type='sine'; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f0*0.72,t+.35);
+  gn.gain.setValueAtTime(v,t); gn.gain.exponentialRampToValueAtTime(0.0001,t+.55); o.connect(gn); gn.connect(MUS.master); o.start(t); o.stop(t+.6);
+  const s=AC.createBufferSource(); s.buffer=MUS.noise; const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=500; const g2=AC.createGain(); g2.gain.setValueAtTime(v*.35,t); g2.gain.exponentialRampToValueAtTime(0.0001,t+.12);
+  s.connect(f); f.connect(g2); g2.connect(MUS.master); s.start(t); s.stop(t+.15); }
+const Dm={r:38,q:[0,3,7]}, Bb={r:34,q:[0,4,7]}, Cm={r:36,q:[0,4,7]}, A7={r:33,q:[0,4,7]};
+const PROG=[Dm,Dm,Dm,Bb,Cm,A7];   // 6-bar loop
+// the riff, in [step, note, length-in-steps] per bar (16 steps a bar):
+// "do do do do du du do du do" x3, then "da da da daa daa da dataa do doo", "diity doo doo doo doo doo doo", "dooooo"
+const RIFF_R=[0,2,4,6,8,9,10,12,14];
+const RIFF=[
+  RIFF_R.map((st,i)=>[st,[62,62,62,65,64,62,60,62,57][i],i<4?2:(st===8?1:2)]),
+  RIFF_R.map((st,i)=>[st,[62,62,62,65,64,62,60,62,60][i],i<4?2:(st===8?1:2)]),
+  RIFF_R.map((st,i)=>[st,[62,62,62,65,64,62,60,62,65][i],i<4?2:(st===8?1:2)]),
+  [[0,65,1],[1,65,1],[2,65,2],[4,67,2],[6,69,2],[8,67,2],[10,65,1],[11,67,1],[12,69,2],[14,70,2]],
+  [[0,72,1],[1,70,1],[2,69,2],[4,67,2],[6,65,2],[8,64,2],[10,65,2],[12,67,4]],
+  [[0,69,16]],
+];
+function musBpm(){ if(MUS.kind!=='boss'||!S) return 96; const lost=1-Math.max(0,S.bossHp)/S.bossMax; return 120+lost*50+(S.enraged?6:0); }   // faster and faster as Goldor loses health
+function musStep(st,t){ const bar=Math.floor(st/16)%6, s=st%16, ch=PROG[bar], boss=MUS.kind==='boss', rage=boss&&S&&S.enraged, beat=60/musBpm();
+  // choir pad: one swell per bar
+  if(s===0){ for(const x of ch.q) voice(mf(ch.r+24+x),t,beat*4,{type:'triangle',vol:boss?.05:.045,cut:1600,att:beat*.9,det:9});
+             if(rage) for(const x of ch.q) voice(mf(ch.r+36+x),t,beat*4,{type:'triangle',vol:.03,cut:2400,att:beat*.6,det:12}); }
+  // low string ostinato
+  const ost=[0,0,7,0,12,0,7,0][s%8];
+  if(boss) voice(mf(ch.r+12+ost),t,beat*.22,{type:'sawtooth',vol:.11,cut:950,det:7});
+  else if(s%2===0) voice(mf(ch.r+12+ost),t,beat*.4,{type:'sawtooth',vol:.06,cut:650,det:6});
+  // deep bass
+  if(s%8===0) voice(mf(ch.r),t,beat*1.8,{type:'sawtooth',vol:boss?.2:.13,cut:300,det:4});
+  if(boss){
+    // brass stabs
+    if(s===0||s===8) for(const x of ch.q) voice(mf(ch.r+24+x),t,beat*.5,{type:'sawtooth',vol:.05,cut:2600,cutEnd:500,det:5});
+    // lead riff
+    for(const [st2,n,len] of RIFF[bar]) if(st2===s){ const d=Math.max(beat*.22,len*beat/4*.92);
+      voice(mf(n),t,d,{type:'sawtooth',vol:.11,cut:2200,cutEnd:1000,att:.012,det:5}); voice(mf(n),t,d,{type:'square',vol:.035,cut:1600});
+      if(rage) voice(mf(n+12),t,d,{type:'square',vol:.03,cut:2400,det:6}); }
+    // war drums + timpani
+    if(s===0||s===8) timpani(t,.9,73); if(s===3||s===11) timpani(t,.5,55); if(s===14||s===15) timpani(t,.6,82);
+    if(s===4||s===12) noiseHit(t,.18,700,.28);
+    if(rage && s%2===1) noiseHit(t,.04,6500,.08);
+  } else { if(s===0) timpani(t,.5,62); if(s===8) timpani(t,.3,55); }
+}
+function musPump(){ if(!MUS.kind) return; const ahead=AC.currentTime+0.12; while(MUS.next<ahead){ musStep(MUS.step,MUS.next); MUS.step++; MUS.next+=60/musBpm()/4; } }
+function musicPlay(kind){ musicStop(); MUS.want=kind; if(!MUS.on) return; try{ musCtx(); }catch(e){ return; }
+  MUS.kind=kind; MUS.step=0; MUS.next=AC.currentTime+0.05; MUS.timer=setInterval(musPump,25); }
+function musicStop(){ clearInterval(MUS.timer); MUS.timer=null; MUS.kind=null; }
+function updMusBtn(){ const b=document.getElementById('musBtn'), c=document.getElementById('musChk'); if(b) b.textContent=MUS.on?'♪ Music on':'♪ Music off'; if(c) c.checked=MUS.on; }
+function musicToggle(){ MUS.on=!MUS.on; try{ localStorage.setItem('goldorMusic',MUS.on?'on':'off'); }catch(e){}
+  if(MUS.on){ if(MUS.want&&S&&(S.phase==='play'||S.phase==='boss')) musicPlay(MUS.want); } else { const w=MUS.want; musicStop(); MUS.want=w; } updMusBtn(); }
 
 /* ---------- team ---------- */
 const TEAM={
@@ -196,18 +268,19 @@ function newGame(m){
   window.lastRunTypes=mine.join();     // melody: rare, never more than once
   S={phase:'play', sec:0, t:0, hp:5000, maxHp:5000, mana:1000, deaths:0, falls:0, myTypes:mine,
      me:{x:95,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:95,y:270}}, fx:[], circles:[], slams:[], waves:[], cd:0, pulseCd:0, termOpen:null, bossHp:1000, bossMax:1000, mm, th:mode==='th', mode, nSec:mode==='th'?3:4, runOwners:[...Array(4)].map(()=>shuffle(['you','v','r','d'])), runNpcTypes:[...Array(4)].map(()=>[...Array(4)].map(()=>pick(BASE_TYPES))), score:0, essence:0, count:4, lastCount:5, shake:0, parts:[], healed:0, roastT:-9, dead:{}, lowT:{}};
-  S.D=mm?{gs:80,aura:720,boss:1485,slam:2.05,laser:2.6,laserDmg:530,thp:2700,npc:[8,14],mult:mode==='th'?2:1.5}:{gs:58,aura:520,boss:1100,slam:2.6,laser:3.6,laserDmg:440,thp:3200,npc:[6,12],mult:1};
+  S.D=mm?{gs:80,aura:720,boss:1650,slam:2.05,laser:2.6,laserDmg:860,thp:2700,npc:[8,14],mult:mode==='th'?2:1.5}:{gs:58,aura:520,boss:1100,slam:2.6,laser:3.6,laserDmg:505,thp:3200,npc:[6,12],mult:1};
   $('boss').style.display='none'; $('party').style.display='none'; $('chat').innerHTML='';
   loadSection(0);
 }
 function moverRect(m,t){ const o=Math.sin(t*m.spd+m.ph)*m.amp; const cx=m.cx+(m.ax==='x'?o:0), cy=m.cy+(m.ax==='y'?o:0); return [cx-m.w/2,cy-m.h/2,m.w,m.h]; }
 function loadSection(i){
+  if(MUS.kind!=='section') musicPlay('section');
   S.sec=i; S.secT=0; S.slowRoasts=0; S.auraT=0; S.gateOpen=false; S.phase='play'; S.lay=S.th?LAYOUT[TH_ROOMS[i].lay]:LAYOUT[i]; S.adj=buildGraph(S.lay); S.laserX=ROOM.x-30; S.laserWarn=false; S.circles=[]; S.slams=[]; S.waves=[];
   const owners=S.runOwners[i];   // same layout for this run, even after you die
   S.terms=S.th ? TH_ROOMS[i].spots.map((si,k)=>{ const p=S.lay.spots[si]; return {x:p[0],y:p[1],owner:'you',type:S.myTypes[i*3+k],done:false}; })
                 : S.lay.spots.map((p,k)=>({x:p[0],y:p[1],owner:owners[k],type:owners[k]==='you'?S.myTypes[i]:S.runNpcTypes[i][k],done:false}));
   Object.assign(S.me,{x:95,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:95,y:270}});
-  S.npcs=['v','r','d'].map((id,k)=>({id,...TEAM[id],x:70,y:225+k*45,state:S.th?'away':'walk',term:S.terms.find(t=>t.owner===id),dur:rand(...S.D.npc),prog:0}));
+  S.npcs=['v','r','d'].map((id,k)=>({id,...TEAM[id],x:70,y:225+k*45,state:S.th?'away':'walk',air:0,fall:0,term:S.terms.find(t=>t.owner===id),dur:rand(...S.D.npc),prog:0}));
   // essence orbs scattered on the platforms (not the start or the gate)
   const pool=S.lay.pads.filter(p=>p!==START&&p!==GATEPAD); S.orbs=[];
   for(let k=0;k<6;k++){ const [x,y,w,h]=pick(pool); S.orbs.push({x:x+10+Math.random()*(w-20),y:y+10+Math.random()*(h-20),ph:Math.random()*6}); }
@@ -219,11 +292,12 @@ function loadSection(i){
   setButtons();
 }
 function loadBoss(){
-  S.phase='boss'; S.terms=[]; S.gateOpen=false; S.lay=BOSS_LAYOUT; S.adj=buildGraph(S.lay); S.bossMax=S.th?Math.round(S.D.boss*0.85):S.D.boss;   // Try Hard: 85% of Master Mode health S.bossHp=S.bossMax; S.soloMsg=false; S.enraged=false; S.charge=0; S.taunt=0; S.lassoT=0; S.slamT=2.5; S.laserT=4; S.waveT=7; S.circles=[]; S.slams=[]; S.waves=[];
+  musicPlay('boss');
+  S.phase='boss'; S.terms=[]; S.gateOpen=false; S.lay=BOSS_LAYOUT; S.adj=buildGraph(S.lay); S.bossMax=S.th?2200:S.D.boss;   // Normal 1100, Master Mode 1.5x (1650), Try Hard 2x (2200) S.bossHp=S.bossMax; S.soloMsg=false; S.enraged=false; S.charge=0; S.taunt=0; S.lassoT=0; S.slamT=2.5; S.laserT=4; S.waveT=7; S.circles=[]; S.slams=[]; S.waves=[];
   Object.assign(S.me,{x:330,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:330,y:270}});
   S.hp=S.maxHp; S.mana=1000;
   S.gold={x:640,y:270,target:'you'};
-  S.npcs=S.th?[]:['v','r','d'].map((id,k)=>({id,...TEAM[id],x:[140,110,140][k],y:[140,270,400][k],off:[-0.75,0,0.75][k],hp:S.D.thp,max:S.D.thp,shot:rand(0,.7),dead:false,healT:S.th?10:S.mm?7:6,glowT:0}));
+  S.npcs=S.th?[]:['v','r','d'].map((id,k)=>({id,...TEAM[id],x:[140,110,140][k],y:[140,270,400][k],off:[-0.75,0,0.75][k],hp:S.D.thp,max:S.D.thp,shot:rand(0,.7),dead:false,healT:S.th?10:S.mm?15:6,glowT:0}));
   $('boss').style.display='block'; $('party').style.display=S.th?'none':'block';
   chat('<span class="cgo">[BOSS] Goldor</span>: <span class="cy">None of you will get past me.</span>');
   chat(S.th?'<span style="color:#d07bff">Solo boss!</span> Hit him with <b>F</b> or click (max 4 hits a second), dodge the slams and jump the shockwaves.':'<span class="cgr">Tank job:</span> stay close so Goldor hits <b>you</b>, dodge or heal the slams, and keep your team alive.');
@@ -297,11 +371,39 @@ function roast(kind,who,force){
 function burst(x,y,col,n){ for(let i=0;i<n;i++){ const a=Math.random()*7, v=40+Math.random()*160; S.parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-40,life:0.6+Math.random()*0.5,col}); } }
 function popScore(x,y,txt){ S.fx.push({type:'score',x,y,t:0,txt}); }
 
+/* ---------- NPC parkour ---------- */
+function npcDie(n,why){
+  n.state='dead'; n.deadT=5; n.prog=0; n.air=0; n.fall=0; burst(n.x,n.y,why==='circle'?'#ff3322':'#9d5cff',26); beep(150,.3,'sawtooth',.04);
+  chat(`<span style="color:${n.col}">${n.name}</span> <span class="cr">${why==='circle'?"walked into Goldor's circle":'fell into the void'}</span> 💀`);
+  const other=pick(S.npcs.filter(o=>o!==n&&o.state!=='dead'&&o.state!=='away'));
+  if(other) setTimeout(()=>say(other,pick(why==='circle'?["imagine dying to the circle 💀","bro said the circle looked friendly","at least it wasn't the tank this time","LMAO"]:["he jumped into the void on purpose","parkour diff","even the tank made that jump"])),600);
+}
+function npcMove(n,gx,gy,dt){
+  n.air=n.air||0; n.fall=n.fall||0;
+  if(n.fall>0){ n.fall-=dt; if(n.fall<=0) npcDie(n,'void'); return false; }
+  if(n.air>0){ n.air-=dt; moveTo(n,n.jx,n.jy,n.jsp,dt); if(n.air<=0 && !onGround(n)) n.fall=0.5; return false; }
+  for(const m of S.lay.movers){ const a=moverRect(m,S.prevT), b=moverRect(m,S.t);                 // ride moving platforms
+    if(n.x>=a[0]-6&&n.x<=a[0]+a[2]+6&&n.y>=a[1]-6&&n.y<=a[1]+a[3]+6){ n.x+=b[0]-a[0]; n.y+=b[1]-a[1]; break; } }
+  const G0=S.gold, gd=dist(n,G0);
+  if(gd<120){ const ax=(n.x-G0.x)/(gd||1), ay=(n.y-G0.y)/(gd||1), fx=n.x+ax*120*dt, fy=n.y+ay*120*dt;   // back away from the circle
+    if(onGround({x:fx,y:fy},-4)){ n.x=fx; n.y=fy; } return false; }
+  n.repath=(n.repath||0)-dt; if(!n.path||n.repath<=0){ n.path=route(padAt(n),padAt({x:gx,y:gy}))||[]; n.repath=0.6; }
+  const here=padAt(n); while(n.path.length&&n.path[0]===here) n.path.shift();
+  let tx=gx, ty=gy; if(n.path.length){ const c=ctr(allRects()[n.path[0]]); tx=c.x; ty=c.y; }
+  const dx=tx-n.x, dy=ty-n.y, d=Math.hypot(dx,dy); if(d<4) return !n.path.length;
+  const ux=dx/d, uy=dy/d, step=Math.min(d,110*dt), nx=n.x+ux*step, ny=n.y+uy*step, G=S.gold;
+  if(Math.hypot(nx-G.x,ny-G.y)<105 && Math.hypot(nx-G.x,ny-G.y)<Math.hypot(n.x-G.x,n.y-G.y)) return false;   // wait for Goldor to pass
+  if(!onGround({x:nx,y:ny})){ const L=findLanding(n.x,n.y,ux,uy);
+    if(L && Math.hypot(L.x-G.x,L.y-G.y)>90){ n.air=AIR; n.jx=L.x; n.jy=L.y; n.jsp=Math.max(60,Math.hypot(L.x-n.x,L.y-n.y)/AIR); }
+    return false; }
+  n.x=nx; n.y=ny; return false;
+}
+
 /* ---------- terminals ---------- */
 function termCount(){ return S.terms.filter(t=>t.done).length; }
 function completeTerm(t,who,col){
   if(t.done) return; t.done=true;
-  for(const n of S.npcs) if(n.term===t && n.state!=='gate') n.state='gate';
+  for(const n of S.npcs) if(n.term===t && n.state!=='gate' && n.state!=='dead') n.state='gate';
   if(who!=='You') S.score+=25; burst(t.x,t.y,col,16);
   chat(`<span style="color:${col}">${who}</span> activated a terminal! (<span class="cgr">${termCount()}</span>/${S.terms.length})`); beep(880,.1); beep(1320,.12,'square',.03);
   if(termCount()===S.terms.length){ S.gateOpen=true; setTimeout(()=>chat('<span class="cgr">The gate has been opened!</span> Jump to the right ➜'),350); setTimeout(()=>beep(660,.25,'triangle',.07),300); }
@@ -396,7 +498,7 @@ function closeTerm(solved){
 
 /* ---------- abilities ---------- */
 function jump(){ const me=S&&S.me; if(!S||S.termOpen||me.air>0||me.fall>0||(S.phase!=='play'&&S.phase!=='boss')) return; me.air=AIR; me.jx=null; beep(330,.06,'triangle',.04); }
-function healCircle(){ if(!S||S.phase!=='boss'||S.mana<300) return; S.mana-=300; S.circles.push({x:S.me.x,y:S.me.y,t:4}); beep(660,.2,'sine',.06); }
+function healCircle(){ if(!S||S.phase!=='boss'||S.mana<350) return; S.mana-=350; S.circles.push({x:S.me.x,y:S.me.y,t:4}); beep(660,.2,'sine',.06); }
 function lasso(){
   if(!S||S.phase!=='boss'||S.pulseCd>0||S.mana<200) return;
   const G=S.gold, me=S.me; if(dist(me,G)>380){ chat('<span class="cg">Goldor is too far away for your lasso.</span>'); return; }
@@ -406,7 +508,7 @@ function lasso(){
 }
 const mendPulse=lasso;
 function attack(){ if(!S||S.phase!=='boss'||S.cd>0) return; S.cd=0.25;   // capped at 4 hits per second
-  if(dist(S.me,S.gold)<120){ S.bossHp-=3.5; S.score+=1; S.fx.push({type:'dmg',x:S.gold.x+rand(-20,20),y:S.gold.y-40,t:0,txt:'370k'}); S.fx.push({type:'slash',x:S.gold.x,y:S.gold.y,t:0}); beep(200,.06); } }
+  if(dist(S.me,S.gold)<120){ const mmOnly=S.mm&&!S.th; S.bossHp-=mmOnly?3:3.5; S.score+=1; S.fx.push({type:'dmg',x:S.gold.x+rand(-20,20),y:S.gold.y-40,t:0,txt:mmOnly?'320k':'370k'}); S.fx.push({type:'slash',x:S.gold.x,y:S.gold.y,t:0}); beep(200,.06); } }
 
 /* ---------- input ---------- */
 addEventListener('keydown',e=>{
@@ -416,7 +518,7 @@ addEventListener('keydown',e=>{
   if(k==='escape') closeTerm(false);
   if(k===' ') jump();
   if(k==='e' && S.phase==='play' && !S.termOpen){ const t=nearestTerm(); if(t) openTerm(t); }
-  if(k==='q') healCircle(); if(k==='r') lasso(); if(k==='f') attack();
+  if(k==='m') musicToggle(); if(k==='q') healCircle(); if(k==='r') lasso(); if(k==='f') attack();
 });
 addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 function nearestTerm(){ let best=null,bd=70; for(const t of S.terms) if(!t.done){ const d=dist(S.me,t); if(d<bd){ bd=d; best=t; } } return best; }
@@ -432,7 +534,7 @@ cv.addEventListener('pointerdown',e=>{
 function moveTo(o,x,y,sp,dt){ const dx=x-o.x, dy=y-o.y, d=Math.hypot(dx,dy); if(d<4) return true; const s=Math.min(d,sp*dt); o.x+=dx/d*s; o.y+=dy/d*s; return false; }
 function hurt(n){ S.hp-=n; S.fx.push({type:'hit',x:S.me.x,y:S.me.y-20,t:0,txt:'-'+Math.round(n)}); }
 function update(dt){
-  const prevT=S.t; S.t+=dt; S.cd=Math.max(0,S.cd-dt); S.pulseCd=Math.max(0,S.pulseCd-dt);
+  const prevT=S.t; S.prevT=prevT; S.t+=dt; S.cd=Math.max(0,S.cd-dt); S.pulseCd=Math.max(0,S.pulseCd-dt);
   S.mana=Math.min(1000,S.mana+(S.phase==='boss'?75:150)*dt);
   const me=S.me;
 
@@ -472,10 +574,15 @@ function update(dt){
   }
 
   if(S.phase==='play'){
+    const G=S.gold, tg=G.path[G.wp]; if(moveTo(G,tg[0],tg[1],S.D.gs,dt)) G.wp=(G.wp+1)%G.path.length;
     for(const n of S.npcs){
-      if(n.state==='walk'){ const tg=n.term; if(tg.done){ n.state='gate'; continue; } if(moveTo(n,tg.x,tg.y+(tg.y<270?22:-22),110,dt)){ n.state='work'; n.prog=0; } }
-      else if(n.state==='work'){ n.prog+=dt/n.dur; if(n.prog>=1) completeTerm(n.term,n.name,n.col); }
-      else if(n.state==='gate'){ const k=['v','r','d'].indexOf(n.id); moveTo(n,845,225+k*45,110,dt); }
+      if(n.state==='away') continue;
+      if(n.state==='dead'){ n.deadT-=dt; if(n.deadT<=0){ Object.assign(n,{x:70,y:225+['v','r','d'].indexOf(n.id)*45,air:0,fall:0,path:null,state:n.term&&!n.term.done?'walk':'gate'}); chat(`<span style="color:${n.col}">${n.name}</span> <span class="cg">respawned.</span>`); } continue; }
+      // the red circle kills NPCs too
+      if(!(n.air>0) && !(n.fall>0) && dist(n,G)<72){ npcDie(n,'circle'); continue; }
+      if(n.state==='walk'){ const tg=n.term; if(tg.done){ n.state='gate'; continue; } if(npcMove(n,tg.x,tg.y+(tg.y<270?22:-22),dt)){ n.state='work'; n.prog=n.prog||0; } }
+      else if(n.state==='work'){ if(dist(n,G)<120){ n.state='walk'; continue; } n.prog+=dt/n.dur; if(n.prog>=1) completeTerm(n.term,n.name,n.col); }
+      else if(n.state==='gate'){ const k=['v','r','d'].indexOf(n.id); npcMove(n,845,225+k*45,dt); }
     }
     S.secT+=dt; const mineT=S.terms.find(t=>t.owner==='you');
     if(mineT&&!mineT.done&&S.secT>(S.slowRoasts?55:32)+S.slowRoasts*20&&S.slowRoasts<3){ S.slowRoasts++; roast('slow',null,true); }
@@ -486,7 +593,6 @@ function update(dt){
       if(S.laserX<me.x-150) S.laserWarn=false; }
     // essence pickups
     for(const o of S.orbs) if(!o.got && me.air<=0 && Math.hypot(me.x-o.x,me.y-o.y)<24){ o.got=true; S.essence++; S.score+=50; burst(o.x,o.y,'#d9a8ff',14); popScore(o.x,o.y,'+50 ✦'); beep(1200,.06,'sine',.05); beep(1600,.08,'sine',.04); }
-    const G=S.gold, tg=G.path[G.wp]; if(moveTo(G,tg[0],tg[1],S.D.gs,dt)) G.wp=(G.wp+1)%G.path.length;
     if(dist(me,G)<72 && me.fall<=0 && me.air<=0){ S.killedBy='aura'; S.shake=14; burst(me.x,me.y,'#ff3322',40); beep(70,.5,'sawtooth',.08); S.hp=0; return endRun(false,'tank'); }
     else S.hp=Math.min(S.maxHp,S.hp+140*dt);
   } else if(S.phase==='boss') bossUpdate(dt);
@@ -508,7 +614,7 @@ function bossUpdate(dt){
   if(G.target==='you' && was && was!=='you') chat('<span class="cgr">You have aggro again.</span>');
   if(S.lassoT>0){ S.lassoT-=dt; const d=dist(G,me); if(d>70) moveTo(G,me.x,me.y,Math.max(500,d/0.3),dt); }
   else if(dist(G,target)>54) moveTo(G,target.x,target.y,(G.target==='you'?66:95)+(S.enraged?(S.mm?18:10):0),dt);
-  if(dist(G,target)<64){ if(target===me){ if(me.fall<=0){ S.hp-=265*dt; } } else target.hp-=715*dt; }
+  if(dist(G,target)<64){ if(target===me){ if(me.fall<=0){ S.hp-=305*(S.th?2:S.mm?1.7:1)*dt; } } else target.hp-=820*(S.mm?1.7:1)*dt; }
 
   // teammates keep range and shoot Goldor
   for(const n of alive){
@@ -520,23 +626,23 @@ function bossUpdate(dt){
     moveTo(n,G.x+Math.cos(base)*175,G.y+Math.sin(base)*175,120,dt); }
     n.x=Math.max(ROOM.x+14,Math.min(ROOM.x+ROOM.w-14,n.x)); n.y=Math.max(ROOM.y+14,Math.min(ROOM.y+ROOM.h-14,n.y));
     n.healT-=dt; n.glowT=Math.max(0,n.glowT-dt);
-    if(n.healT<=0){ n.healT=S.th?10:S.mm?7:6; const amt=n.max/(S.th?8:S.mm?16:8);   // Normal 1/8 every 6s, Master 1/16 every 7s, Try Hard 1/8 every 10s
+    if(n.healT<=0){ n.healT=S.th?10:S.mm?15:6; const amt=n.max/(S.th?8:S.mm?16:8);   // Normal 1/8 every 6s, Master 1/16 every 15s, Try Hard 1/8 every 10s
       n.hp=Math.min(n.max,n.hp+amt); n.glowT=0.9; burst(n.x,n.y,'#55ff88',12); S.fx.push({type:'dmg',x:n.x,y:n.y-30,t:0,txt:'+'+Math.round(amt)+' ❤'}); }
     n.shot-=dt; if(n.shot<=0){ n.shot=0.7; S.bossHp-=6.5; S.score+=2; S.fx.push({type:'beam',x:n.x,y:n.y,x2:G.x,y2:G.y,col:n.col,t:0}); }
   }
   // splash slam aimed at Goldor's target: telegraph, then big area damage
   S.slamT-=dt; if(S.slamT<=0){ S.slamT=S.D.slam*(S.enraged?(S.mm?0.72:0.86):1); const tg=G.target==='you'?me:target; S.slams.push({x:tg.x,y:tg.y,r:100,t:1.25}); }
   for(const s of S.slams){ s.t-=dt; if(s.t<=0 && !s.done){ s.done=true; S.fx.push({type:'slam',x:s.x,y:s.y,t:0,r:s.r}); beep(80,.25,'sawtooth',.07);
-    if(dist(me,s)<s.r && me.air<=0){ if(S.mm) S.oneTap='slam'; hurt(S.mm?S.hp+1:1375); S.shake=10; if(Math.random()<.45) roast('slam'); } else S.shake=Math.max(S.shake,4);
-    for(const n of alive) if(dist(n,s)<s.r){ n.hp-=990; burst(n.x,n.y,'#ff5533',10); S.fx.push({type:'hit',x:n.x,y:n.y-18,t:0,txt:'-990'}); } } }
+    if(dist(me,s)<s.r && me.air<=0){ if(S.mm) S.oneTap='slam'; hurt(S.mm?S.hp+1:1580); S.shake=10; if(Math.random()<.45) roast('slam'); } else S.shake=Math.max(S.shake,4);
+    for(const n of alive) if(dist(n,s)<s.r){ n.hp-=Math.round(1140*(S.mm?1.7:1)); burst(n.x,n.y,'#ff5533',10); S.fx.push({type:'hit',x:n.x,y:n.y-18,t:0,txt:'-'+Math.round(1140*(S.mm?1.7:1))}); } } }
   S.slams=S.slams.filter(s=>!s.done||s.t>-0.3);
   // golden laser chips a random teammate
   S.laserT-=dt; if(S.laserT<=0 && alive.length){ S.laserT=S.D.laser*(S.enraged&&S.mm?0.8:1); const n=pick(alive); n.hp-=S.D.laserDmg; S.fx.push({type:'laser',x:G.x,y:G.y,x2:n.x,y2:n.y,t:0}); S.fx.push({type:'hit',x:n.x,y:n.y-18,t:0,txt:'-'+S.D.laserDmg}); beep(900,.08,'sawtooth',.03); }
   // shockwave: jump over it
   S.waveT-=dt;
-  if(S.waveT<=0 && !(S.charge>0)){ S.charge=1.0; chat('<span class="cy">Goldor is charging a shockwave!</span> Get ready to jump!'); beep(120,.5,'triangle',.05); }
+  if(S.waveT<=0 && !(S.charge>0)){ S.charge=1.0; chat('<span class="cgo"><b>Goldor is charging a GOLD SHOCKWAVE!</b></span> <span class="cr">It kills instantly. JUMP!</span>'); beep(120,.5,'triangle',.05); }
   if(S.charge>0){ S.charge-=dt; if(S.charge<=0){ S.waveT=S.mm?6.5:7.5; S.waves.push({x:G.x,y:G.y,r:30,hit:false}); S.shake=6; beep(90,.3,'sawtooth',.06); } }
-  for(const w of S.waves){ w.r+=230*dt; if(!w.hit && Math.abs(dist(me,w)-w.r)<16){ w.hit=true; if(me.air<=0){ if(S.mm) S.oneTap='shockwave'; hurt(S.mm?S.hp+1:880); } } }
+  for(const w of S.waves){ w.r+=230*dt; if(!w.hit && Math.abs(dist(me,w)-w.r)<16){ w.hit=true; if(me.air<=0){ S.oneTap='shockwave'; hurt(S.hp+1); } } }
   S.waves=S.waves.filter(w=>w.r<560);
   // healing circles
   for(const c of S.circles){ c.t-=dt; if(dist(me,c)<150) S.hp=Math.min(S.maxHp,S.hp+420*dt); for(const n of alive) if(dist(n,c)<150){ const b=n.hp; n.hp=Math.min(n.max,n.hp+420*dt); S.healed+=n.hp-b; } }
@@ -717,10 +823,14 @@ function drawScene(){
     g.globalAlpha=0.8*a; g.strokeStyle='#9dffb8'; g.lineWidth=3; g.setLineDash([10,8]); g.lineDashOffset=-performance.now()/30; g.stroke(); g.restore(); }
   for(const s of S.slams) if(!s.done){ const k=1-s.t/1.25; g.save(); g.fillStyle=`rgba(255,40,30,${.15+k*.25})`; g.strokeStyle='#ff3b30'; g.lineWidth=3;
     g.beginPath(); g.arc(s.x,s.y,s.r,0,7); g.fill(); g.stroke(); g.fillStyle='rgba(255,90,60,.45)'; g.beginPath(); g.arc(s.x,s.y,s.r*k,0,7); g.fill(); g.restore(); }
-  for(const w of S.waves){ g.save(); g.strokeStyle='rgba(255,150,30,.85)'; g.lineWidth=10; g.shadowColor='#ff8800'; g.shadowBlur=14; g.beginPath(); g.arc(w.x,w.y,w.r,0,7); g.stroke(); g.restore(); }
+  for(const w of S.waves){ g.save(); g.globalCompositeOperation='lighter';
+    g.shadowColor='#ffcc33'; g.shadowBlur=30; g.strokeStyle='rgba(255,190,40,.55)'; g.lineWidth=34; g.beginPath(); g.arc(w.x,w.y,w.r,0,7); g.stroke();
+    g.strokeStyle='rgba(255,215,90,.95)'; g.lineWidth=14; g.stroke(); g.strokeStyle='#fff6c8'; g.lineWidth=4; g.stroke();
+    for(let k=0;k<24;k++){ const a=k/24*Math.PI*2+w.r/60; g.fillStyle='#ffe680'; g.fillRect(w.x+Math.cos(a)*w.r-2,w.y+Math.sin(a)*w.r-2,4,4); }
+    g.restore(); }
   for(const n of (S.phase==='play'?S.npcs:[])) if(n.state==='work'){ g.fillStyle='#000'; g.fillRect(n.x-20,n.y+18,40,6); g.fillStyle=n.col; g.fillRect(n.x-19,n.y+19,38*n.prog,4); }
   // people + Goldor, sorted by depth
-  const ents=[...S.npcs.filter(n=>n.state!=='away').map(n=>{ n.hop=S.phase==='play'&&!onGround(n,10); return {y:n.y,f:()=>(n.glowT>0&&!n.dead&&(g.save(),g.globalAlpha=Math.min(1,n.glowT*1.4),g.shadowColor='#55ff88',g.shadowBlur=24,g.strokeStyle='#7dffa8',g.lineWidth=4,g.beginPath(),g.arc(n.x,n.y,24,0,7),g.stroke(),g.fillStyle='rgba(85,255,136,.18)',g.fill(),g.restore()),drawPerson(n,n.col,n.body,n.trim,n.name,false,
+  const ents=[...S.npcs.filter(n=>n.state!=='away'&&n.state!=='dead').map(n=>{ n.hop=false; return {y:n.y,f:()=>(n.glowT>0&&!n.dead&&(g.save(),g.globalAlpha=Math.min(1,n.glowT*1.4),g.shadowColor='#55ff88',g.shadowBlur=24,g.strokeStyle='#7dffa8',g.lineWidth=4,g.beginPath(),g.arc(n.x,n.y,24,0,7),g.stroke(),g.fillStyle='rgba(85,255,136,.18)',g.fill(),g.restore()),drawPerson(n,n.col,n.body,n.trim,n.name,false,
       S.phase==='boss'&&!n.dead?(yy,s)=>{ g.fillStyle='#000'; g.fillRect(n.x-18,yy+s/2+4,36,5); g.fillStyle=n.hp/n.max<.35?'#ff5555':'#55ff55'; g.fillRect(n.x-17,yy+s/2+5,34*n.hp/n.max,3); }:null))}; }),
     {y:S.me.y,f:()=>drawPerson(S.me,TEAM.you.col,TEAM.you.body,TEAM.you.trim,'You',true)},
     {y:S.gold.y,f:()=>{ if(S.enraged&&S.phase==='boss'){ g.save(); g.fillStyle=`rgba(255,40,20,${.18+.1*Math.sin(performance.now()/90)})`; g.beginPath(); g.arc(S.gold.x,S.gold.y,62,0,7); g.fill(); g.restore(); } if(S.charge>0&&S.phase==='boss'){ const k=1-S.charge; g.save(); g.strokeStyle=`rgba(255,160,40,${.5+.5*Math.sin(performance.now()/60)})`; g.lineWidth=6; g.beginPath(); g.arc(S.gold.x,S.gold.y,90-k*50,0,7); g.stroke();
@@ -755,13 +865,14 @@ function hud(){
   $('hpBar').style.transform=`scaleX(${S.hp/S.maxHp})`; $('manaBar').style.transform=`scaleX(${S.mana/1000})`;
   $('bossHp').style.transform=`scaleX(${Math.max(0,S.bossHp/S.bossMax)})`;
   $('keys').innerHTML=S.phase==='boss'
-    ? `<span class="cgr">[Q] Healing Circle</span> 300✎ · <span class="cgo">[R] Lasso</span> ${S.pulseCd>0?Math.ceil(S.pulseCd)+'s':'200✎'}${S.taunt>0?' <span class="cy">TAUNT '+S.taunt.toFixed(1)+'s</span>':''} · [Space] Jump · [F] Hit`
+    ? `<span class="cgr">[Q] Healing Circle</span> 350✎ · <span class="cgo">[R] Lasso</span> ${S.pulseCd>0?Math.ceil(S.pulseCd)+'s':'200✎'}${S.taunt>0?' <span class="cy">TAUNT '+S.taunt.toFixed(1)+'s</span>':''} · [Space] Jump · [F] Hit`
     : '[Space] Jump · [E] Terminal';
   if(S.phase==='boss') $('party').innerHTML=S.npcs.map(n=>`<div style="color:${n.dead?'#777':n.col}">${n.name}${n.dead?' ☠':''}${S.gold.target===n.id?' <span class="cr">⚠</span>':''}</div><div class="bar"><i style="transform:scaleX(${n.hp/n.max})"></i></div>`).join('');
 }
 
 /* ---------- end / screens ---------- */
 function endRun(won,why){
+  musicStop();
   closeTerm(false); S.wasBoss=S.phase==='boss'; S.phase='over'; S.won=won;
   const sc=$('screen'); sc.style.display='flex';
   if(won){ const alive=S.npcs.filter(n=>!n.dead).length;
@@ -793,6 +904,7 @@ let CTM=false; try{ CTM=localStorage.getItem('goldorCTM')==='on'; }catch(e){}
 $('ctm').checked=CTM; $('ctm').onchange=e=>{ CTM=e.target.checked; try{ localStorage.setItem('goldorCTM',CTM?'on':'off'); }catch(_){} };
 function resetRun(){ if(S) closeTerm(false); location.reload(); }   // back to the main screen
 $('resetBtn').addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); resetRun(); });
+$('musChk').onchange=()=>musicToggle(); $('musBtn').addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); musicToggle(); }); updMusBtn();
 function loadPB(){ try{ return JSON.parse(localStorage.getItem('goldorPB_v1'))||{}; }catch(e){ return {}; } }
 function savePB(o){ try{ localStorage.setItem('goldorPB_v1',JSON.stringify(o)); }catch(e){} }
 (()=>{ const pb=loadPB(); const parts=[]; if(pb.normal) parts.push(`Normal PB: ★ ${pb.normal.score} (${fmt(pb.normal.t)})`); if(pb.mm) parts.push(`Master Mode PB: ★ ${pb.mm.score} (${fmt(pb.mm.t)})`); if(pb.th) parts.push(`Try Hard PB: ★ ${pb.th.score} (${fmt(pb.th.t)})`); $('pbLine').textContent=parts.join('  ·  '); })();
@@ -803,7 +915,7 @@ function loop(ts){
   if(S && S.count>0){ S.count-=dt; const n=Math.ceil(S.count); if(n!==S.lastCount){ S.lastCount=n; if(n>0) beep(n<=1?880:440,n<=1?.3:.12,'triangle',.06); } }
   else if(S && (S.phase==='play'||S.phase==='boss')) update(dt);
   draw(); if(S) hud();
-  $('resetBtn').style.display=S?'block':'none';
+  $('resetBtn').style.display=S?'block':'none'; $('musBtn').style.display=S?'block':'none';
 }
 requestAnimationFrame(loop);
 </script>
