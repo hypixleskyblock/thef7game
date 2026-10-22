@@ -280,7 +280,7 @@ function loadSection(i){
   S.terms=S.th ? TH_ROOMS[i].spots.map((si,k)=>{ const p=S.lay.spots[si]; return {x:p[0],y:p[1],owner:'you',type:S.myTypes[i*3+k],done:false}; })
                 : S.lay.spots.map((p,k)=>({x:p[0],y:p[1],owner:owners[k],type:owners[k]==='you'?S.myTypes[i]:S.runNpcTypes[i][k],done:false}));
   Object.assign(S.me,{x:95,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:95,y:270}});
-  S.npcs=['v','r','d'].map((id,k)=>({id,...TEAM[id],x:70,y:225+k*45,state:S.th?'away':'walk',air:0,fall:0,term:S.terms.find(t=>t.owner===id),dur:rand(...S.D.npc),prog:0}));
+  S.npcs=['v','r','d'].map((id,k)=>({id,...TEAM[id],x:60+Math.random()*50,y:220+k*45+rand(-8,8),state:S.th?'away':'walk',air:0,fall:0,term:S.terms.find(t=>t.owner===id),dur:rand(...S.D.npc),prog:0}));
   // essence orbs scattered on the platforms (not the start or the gate)
   const pool=S.lay.pads.filter(p=>p!==START&&p!==GATEPAD); S.orbs=[];
   for(let k=0;k<6;k++){ const [x,y,w,h]=pick(pool); S.orbs.push({x:x+10+Math.random()*(w-20),y:y+10+Math.random()*(h-20),ph:Math.random()*6}); }
@@ -388,27 +388,44 @@ function danger(p){ const a=S.gold, b=gFuture(0.7), c=gFuture(1.5);
 const SAFE=130;
 function npcMove(n,gx,gy,dt){
   n.air=n.air||0; n.fall=n.fall||0;
+  if(n.spd===undefined){ n.spd=rand(135,175); n.seed=Math.random()*9; n.ox=rand(-1,1); n.oy=rand(-1,1); n.vx=0; n.vy=0; n.fleeT=0; n.waitT=rand(0,.7); }
   if(n.fall>0){ n.fall-=dt; if(n.fall<=0) npcDie(n,'void'); return false; }
-  if(n.air>0){ n.air-=dt; moveTo(n,n.jx,n.jy,n.jsp,dt); if(n.air<=0 && !onGround(n)) n.fall=0.5; return false; }
+  if(n.air>0){ n.air-=dt; moveTo(n,n.jx,n.jy,n.jsp,dt); if(n.air<=0){ n.vx=n.vy=0; if(!onGround(n)) n.fall=0.5; } return false; }
   for(const m of S.lay.movers){ const a=moverRect(m,S.prevT), b=moverRect(m,S.t);                 // ride moving platforms
     if(n.x>=a[0]-6&&n.x<=a[0]+a[2]+6&&n.y>=a[1]-6&&n.y<=a[1]+a[3]+6){ n.x+=b[0]-a[0]; n.y+=b[1]-a[1]; break; } }
-  const here0=danger(n);
-  if(here0<SAFE){   // Goldor is coming: pick the safest nearby spot (or jump away) before he arrives
-    let best=null, bv=here0;
-    for(let k=0;k<16;k++){ const a=k/16*Math.PI*2; for(const r of [18,36,54]){ const p={x:n.x+Math.cos(a)*r,y:n.y+Math.sin(a)*r};
-      if(!onGround(p,-8)) continue; const v=danger(p); if(v>bv+2){ bv=v; best=p; } } }
-    if(best){ moveTo(n,best.x,best.y,160,dt); return false; }
-    for(let k=0;k<12;k++){ const a=k/12*Math.PI*2, L=findLanding(n.x,n.y,Math.cos(a),Math.sin(a)); if(L && danger(L)>bv+20){ bv=danger(L); best=L; } }
-    if(best){ n.air=AIR; n.jx=best.x; n.jy=best.y; n.jsp=Math.max(60,Math.hypot(best.x-n.x,best.y-n.y)/AIR); }
-    return false; }
-  n.repath=(n.repath||0)-dt; if(!n.path||n.repath<=0){ n.path=route(padAt(n),padAt({x:gx,y:gy}))||[]; n.repath=0.6; }
-  const here=padAt(n); while(n.path.length&&n.path[0]===here) n.path.shift();
-  let tx=gx, ty=gy; if(n.path.length){ const c=ctr(allRects()[n.path[0]]); tx=c.x; ty=c.y; }
-  const dx=tx-n.x, dy=ty-n.y, d=Math.hypot(dx,dy); if(d<4) return !n.path.length;
-  const ux=dx/d, uy=dy/d, step=Math.min(d,150*dt), nx=n.x+ux*step, ny=n.y+uy*step, G=S.gold;
-  if(danger({x:nx,y:ny})<SAFE) return false;   // don't walk toward where Goldor is going; wait for him to pass
-  if(!onGround({x:nx,y:ny})){ const L=findLanding(n.x,n.y,ux,uy);
-    if(L && danger(L)>SAFE+15){ n.air=AIR; n.jx=L.x; n.jy=L.y; n.jsp=Math.max(60,Math.hypot(L.x-n.x,L.y-n.y)/AIR); }
+  if(n.waitT>0){ n.waitT-=dt; return false; }                                                   // small random start delay
+  // decide where to head: escape spot (committed for a moment) or the next platform on the route
+  let tx, ty, fleeing=false;
+  if(n.fleeT>0){ n.fleeT-=dt; tx=n.fx; ty=n.fy; fleeing=true; }
+  else if(danger(n)<95){                                                                         // Goldor is really close: commit to one escape
+    let best=null, bv=danger(n);
+    for(let k=0;k<16;k++){ const a=k/16*Math.PI*2; for(const r of [30,60]){ const p={x:n.x+Math.cos(a)*r,y:n.y+Math.sin(a)*r};
+      if(!onGround(p,-10)) continue; const v=danger(p); if(v>bv+4){ bv=v; best=p; } } }
+    if(best){ n.fx=best.x; n.fy=best.y; n.fleeT=0.9; tx=best.x; ty=best.y; fleeing=true; }
+    else { for(let k=0;k<12;k++){ const a=k/12*Math.PI*2, L=findLanding(n.x,n.y,Math.cos(a),Math.sin(a)); if(L && danger(L)>bv+20){ bv=danger(L); best=L; } }
+      if(best){ n.air=AIR; n.jx=best.x; n.jy=best.y; n.jsp=Math.max(60,Math.hypot(best.x-n.x,best.y-n.y)/AIR); return false; } } }
+  if(!fleeing){
+    n.repath=(n.repath||0)-dt; if(!n.path||n.repath<=0){ n.path=route(padAt(n),padAt({x:gx,y:gy}))||[]; n.repath=0.8; }
+    const here=padAt(n); while(n.path.length&&n.path[0]===here) n.path.shift();
+    tx=gx; ty=gy;
+    if(n.path.length){ const r=allRects()[n.path[0]], c=ctr(r); tx=c.x+n.ox*r[2]*0.22; ty=c.y+n.oy*r[3]*0.22; }   // each NPC takes its own line
+  }
+  const dx=tx-n.x, dy=ty-n.y, d=Math.hypot(dx,dy);
+  if(d<5){ n.vx*=0.6; n.vy*=0.6; return !fleeing && !n.path.length; }
+  let ux=dx/d, uy=dy/d;
+  // gentle sway so they don't walk like robots, and personal space so they don't clump
+  const sw=Math.sin(S.t*2.6+n.seed)*0.22; let wx=ux-uy*sw, wy=uy+ux*sw;
+  for(const o of S.npcs){ if(o===n||o.state==='dead'||o.state==='away') continue; const ex=n.x-o.x, ey=n.y-o.y, ed=Math.hypot(ex,ey); if(ed>0&&ed<30){ wx+=ex/ed*0.8*(1-ed/30); wy+=ey/ed*0.8*(1-ed/30); } }
+  const wl=Math.hypot(wx,wy)||1; wx/=wl; wy/=wl;
+  const sp=(fleeing?1.15:1)*n.spd, k=Math.min(1,dt*7);                                           // smooth turning
+  n.vx+=(wx*sp-n.vx)*k; n.vy+=(wy*sp-n.vy)*k;
+  const step=Math.min(d,Math.hypot(n.vx,n.vy)*dt), vl=Math.hypot(n.vx,n.vy)||1, nx=n.x+n.vx/vl*step, ny=n.y+n.vy/vl*step;
+  // only hold back if this step walks INTO danger (moving away or sideways is always fine)
+  if(!fleeing && danger({x:nx,y:ny})<100 && danger({x:nx,y:ny})<danger(n)){ n.vx*=0.5; n.vy*=0.5; return false; }
+  if(!onGround({x:nx,y:ny})){
+    const L=findLanding(n.x,n.y,ux,uy);
+    if(L && danger(L)>90){ n.air=AIR; n.jx=L.x; n.jy=L.y; n.jsp=Math.max(60,Math.hypot(L.x-n.x,L.y-n.y)/AIR); }
+    else { n.vx*=0.3; n.vy*=0.3; }
     return false; }
   n.x=nx; n.y=ny; return false;
 }
