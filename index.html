@@ -100,7 +100,7 @@
     <p>The terminals float over the void. You stop at the edge of a platform. Press <b>Space</b> (or Jump) to jump the gap, and time your jumps onto the <b>moving platforms</b>. Goldor's <b class="cr">red circle is instant death</b>.</p>
     <p>In the boss fight your team does the damage. You <b>hold aggro</b> (use your <b class="cgo">Lasso</b> to yank Goldor back), take the <b class="cr">splash slams</b> and <b class="cgr">heal your team</b>.</p>
     <p class="cr">Goldor's red slam circle fills up and hits you for ¼ of your health if you're still in it, his big gold shockwave kills instantly (jump it!), and quarters of the arena turn into kill zones.</p>
-    <p style="color:#d07bff">Try Hard Mode: solo. 3 rooms with 3 terminals each, all yours, while a red laser eats the room behind you. Then the Master Mode boss.</p>
+    <p style="color:#d07bff">Try Hard Mode: solo. 3 rooms with 3 terminals each, all yours, while a red laser eats the room behind you. Then the Master Mode boss, plus a Power Laser you charge with 5 power orbs.</p>
     <div><button class="go" id="startBtn">Normal</button> <button class="go" id="mmBtn" style="background:#7a1f1f;border-color:#e06a6a #4a1010 #4a1010 #e06a6a">Master Mode</button> <button class="go" id="thBtn" style="background:#3d1257;border-color:#c07bff #1e0830 #1e0830 #c07bff">Try Hard Mode</button></div>
     <p style="margin-top:14px"><label style="cursor:pointer;font-size:clamp(16px,2.4vw,22px)"><input type="checkbox" id="ctm" style="width:18px;height:18px;vertical-align:middle"> Click to move <span class="cg">(walk to wherever you click or tap)</span></label></p>
     <p><label style="cursor:pointer;font-size:clamp(16px,2.4vw,22px)"><input type="checkbox" id="musChk" style="width:18px;height:18px;vertical-align:middle"> Music <span class="cg">(original dark dungeon soundtrack)</span></label></p>
@@ -288,7 +288,7 @@ function loadSection(i){
   // essence orbs scattered on the platforms (not the start or the gate)
   const pool=S.lay.pads.filter(p=>p!==START&&p!==GATEPAD); S.orbs=[];
   S.pOrbs=[];
-  if(S.mm){ const cands=S.lay.pads.filter(p=>p!==START&&p!==GATEPAD).map(p=>({p,score:Math.hypot(p[0]+p[2]/2-95,p[1]+p[3]/2-270)-p[2]*p[3]/40}))
+  if(S.th){ const cands=S.lay.pads.filter(p=>p!==START&&p!==GATEPAD).map(p=>({p,score:Math.hypot(p[0]+p[2]/2-95,p[1]+p[3]/2-270)-p[2]*p[3]/40}))
       .sort((a,b)=>b.score-a.score);
     if(S.lay.movers.length) S.pOrbs.push({m:pick(S.lay.movers),got:false});                        // ride a moving platform for it
     for(const c of cands){ if(S.pOrbs.length>=2) break; if(!S.lay.spots.some(([sx,sy])=>sx>=c.p[0]&&sx<=c.p[0]+c.p[2]&&sy>=c.p[1]&&sy<=c.p[1]+c.p[3])) S.pOrbs.push({p:c.p,got:false}); } }
@@ -316,7 +316,7 @@ function setButtons(){
   const b=$('btns'); b.innerHTML='';
   const mk=(txt,cls,fn)=>{ const e=document.createElement('button'); e.textContent=txt; if(cls) e.className=cls; e.addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation(); fn(); }); b.appendChild(e); };
   mk('Jump','',jump);
-  if(S.phase==='boss'){ mk('Heal','heal',healCircle); mk('Lasso','pulse',lasso); mk('Hit','',attack); if(S.mm) mk('⚡ Laser','pulse',fireLaser); }
+  if(S.phase==='boss'){ mk('Heal','heal',healCircle); mk('Lasso','pulse',lasso); mk('Hit','',attack); if(S.th) mk('⚡ Laser','pulse',fireLaser); }
 }
 
 /* ---------- chat ---------- */
@@ -662,7 +662,7 @@ function collectPower(o,q){ o.got=true; S.power=Math.min(5,S.power+1); burst(q.x
   S.fx.push({type:'score',x:q.x,y:q.y-10,t:0,txt:`⚡ ${S.power}/5`});
   chat(S.power>=5?'<span class="cgo"><b>⚡ POWER LASER READY!</b></span> Press <b>G</b> to fire at Goldor!':`<span class="cgo">⚡ Power orb</span> ${S.power}/5`); }
 function fireLaser(){
-  if(!S||S.phase!=='boss'||!S.mm||S.laserFire) return;
+  if(!S||S.phase!=='boss'||!S.th||S.laserFire) return;
   if(S.power<5){ chat(`<span class="cg">Power Laser needs 5 power orbs (${S.power}/5).</span>`); return; }
   S.power=0; S.laserFire={t:3,ang:Math.atan2(S.gold.y-S.me.y,S.gold.x-S.me.x),done:0};
   S.shake=8; beep(70,.8,'sawtooth',.07); beep(140,.8,'square',.04);
@@ -681,7 +681,7 @@ function bossUpdate(dt){
   else if(dist(G,target)>54) moveTo(G,target.x,target.y,(G.target==='you'?66:95)+(S.enraged?(S.mm?18:10):0),dt);
   if(dist(G,target)<64){ if(target===me){ if(me.fall<=0){ S.hp-=305*(S.th?2:S.mm?1.7:1)*dt; } } else target.hp-=820*(S.mm?1.7:1)*dt; }
 
-  if(S.mm){
+  if(S.th){
     S.pSpawnT=(S.pSpawnT??3)-dt; S.pOrbsB=S.pOrbsB||[];
     if(S.pSpawnT<=0 && S.pOrbsB.length<2 && S.power<5){ S.pSpawnT=6;
       const spots=[[62,62],[898,62],[62,478],[898,478],[G.x+(Math.random()<.5?-75:75),G.y+rand(-40,40)]];
@@ -710,7 +710,7 @@ function bossUpdate(dt){
     npcGo(n,G.x+Math.cos(base)*rng,G.y+Math.sin(base)*rng,150,dt); }
     n.x=Math.max(ROOM.x+14,Math.min(ROOM.x+ROOM.w-14,n.x)); n.y=Math.max(ROOM.y+14,Math.min(ROOM.y+ROOM.h-14,n.y));
     n.healT-=dt; n.glowT=Math.max(0,n.glowT-dt);
-    if(n.healT<=0){ n.healT=S.th?10:S.mm?15:6; const amt=n.max/(S.th?8:S.mm?16:8);   // Normal 1/8 every 6s, Master 1/16 every 15s, Try Hard 1/8 every 10s
+    if(n.healT<=0){ n.healT=S.th?10:S.mm?15:6; const amt=n.max*(S.th?1/8:S.mm?3/16:1/8);   // Normal 1/8 every 6s, Master 3/16 every 15s, Try Hard 1/8 every 10s
       n.hp=Math.min(n.max,n.hp+amt); n.glowT=0.9; burst(n.x,n.y,'#55ff88',12); S.fx.push({type:'dmg',x:n.x,y:n.y-30,t:0,txt:'+'+Math.round(amt)+' ❤'}); }
     n.shot-=dt; if(n.shot<=0){ n.shot=0.7; S.bossHp-=5.5; S.score+=2; S.fx.push({type:'beam',x:n.x,y:n.y,x2:G.x,y2:G.y,col:n.col,t:0}); }
   }
@@ -719,6 +719,9 @@ function bossUpdate(dt){
   for(const s of S.slams){ s.t-=dt; if(s.t<=0 && !s.done){ s.done=true; S.fx.push({type:'slam',x:s.x,y:s.y,t:0,r:s.r}); beep(80,.25,'sawtooth',.07);
     if(dist(me,s)<s.r && me.air<=0){ hurt(S.maxHp*0.25); S.shake=10; if(Math.random()<.45) roast('slam'); } else S.shake=Math.max(S.shake,4);
     for(const n of alive) if(dist(n,s)<s.r && !(s.fail&&!s.fail[n.id])){ n.hp-=Math.round(1140*(S.mm?1.7:1)); burst(n.x,n.y,'#ff5533',10); S.fx.push({type:'hit',x:n.x,y:n.y-18,t:0,txt:'-'+Math.round(1140*(S.mm?1.7:1))}); } } }
+  for(const s of S.slams) if(!s.done){ const fillR=s.r*(1-s.t/1.25);          // the filled part burns while it grows
+    if(dist(me,s)<fillR && me.air<=0){ S.hp-=420*dt; if(Math.random()<dt*6) S.fx.push({type:'hit',x:me.x,y:me.y-20,t:0,txt:'🔥'}); }
+    for(const n of alive) if(dist(n,s)<fillR) n.hp-=320*dt; }
   S.slams=S.slams.filter(s=>!s.done||s.t>-0.3);
   // golden laser chips a random teammate
   S.laserT-=dt; if(S.laserT<=0 && alive.length){ S.laserT=S.D.laser*(S.enraged&&S.mm?0.8:1); const n=pick(alive); n.hp-=S.D.laserDmg; S.fx.push({type:'laser',x:G.x,y:G.y,x2:n.x,y2:n.y,t:0}); S.fx.push({type:'hit',x:n.x,y:n.y-18,t:0,txt:'-'+S.D.laserDmg}); beep(900,.08,'sawtooth',.03); }
@@ -988,8 +991,8 @@ function hud(){
   $('hpBar').style.transform=`scaleX(${S.hp/S.maxHp})`; $('manaBar').style.transform=`scaleX(${S.mana/1000})`;
   $('bossHp').style.transform=`scaleX(${Math.max(0,S.bossHp/S.bossMax)})`;
   $('keys').innerHTML=S.phase==='boss'
-    ? `<span class="cgr">[Q] Healing Circle</span> 350✎ · <span class="cgo">[R] Lasso</span> ${S.pulseCd>0?Math.ceil(S.pulseCd)+'s':'200✎'}${S.taunt>0?' <span class="cy">TAUNT '+S.taunt.toFixed(1)+'s</span>':''} · [Space] Jump · [F] Hit${S.mm?` · <span class="cgo">[G] ⚡ Laser ${S.power}/5</span>`:''}`
-    : '[Space] Jump · [E] Terminal'+(S.mm?` · <span class="cgo">⚡ Power ${S.power}/5</span>`:'');
+    ? `<span class="cgr">[Q] Healing Circle</span> 350✎ · <span class="cgo">[R] Lasso</span> ${S.pulseCd>0?Math.ceil(S.pulseCd)+'s':'200✎'}${S.taunt>0?' <span class="cy">TAUNT '+S.taunt.toFixed(1)+'s</span>':''} · [Space] Jump · [F] Hit${S.th?` · <span class="cgo">[G] ⚡ Laser ${S.power}/5</span>`:''}`
+    : '[Space] Jump · [E] Terminal'+(S.th?` · <span class="cgo">⚡ Power ${S.power}/5</span>`:'');
   if(S.phase==='boss') $('party').innerHTML=S.npcs.map(n=>`<div style="color:${n.dead?'#777':n.col}">${n.name}${n.dead?' ☠'+(n.reviveT!==undefined?' <span class="cg">'+Math.ceil(n.reviveT)+'s</span>':''):''}${S.gold.target===n.id?' <span class="cr">⚠</span>':''}</div><div class="bar"><i style="transform:scaleX(${n.hp/n.max})"></i></div>`).join('');
 }
 
