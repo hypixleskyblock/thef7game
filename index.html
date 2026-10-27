@@ -76,7 +76,7 @@
 <body>
 <h1>F7 · Goldor Phase <span style="font-size:16px;color:#ffcc33">v3.0</span></h1>
 <p class="help">Walk: <b>WASD</b> (or click / tap, if Click to move is on) · <b>Space</b> to jump the gaps · <b>E</b> or click to open <b style="color:#ffaa00">your</b> terminal ·
-  <b>M</b> music on/off · Boss: stay close to Goldor, <b>Q</b> Healing Circle, <b>R</b> Lasso (pulls Goldor to you and takes aggro), <b>F</b> or click Goldor to hit</p>
+  <b>M</b> music on/off · Boss: stay close to Goldor, <b>Q</b> Healing Circle, <b>R</b> Lasso (pulls Goldor to you and takes aggro), <b>F</b> or click Goldor to use your weapon</p>
 
 <div id="wrap">
   <canvas id="game" width="960" height="540"></canvas>
@@ -105,6 +105,9 @@
     <p style="margin-top:14px"><label style="cursor:pointer;font-size:clamp(16px,2.4vw,22px)"><input type="checkbox" id="ctm" style="width:18px;height:18px;vertical-align:middle"> Click to move <span class="cg">(walk to wherever you click or tap)</span></label></p>
     <p><label style="cursor:pointer;font-size:clamp(16px,2.4vw,22px)"><input type="checkbox" id="musChk" style="width:18px;height:18px;vertical-align:middle"> Music <span class="cg">(original dark dungeon soundtrack)</span></label></p>
     <p><label style="cursor:pointer;font-size:clamp(16px,2.4vw,22px)"><input type="checkbox" id="practice" style="width:18px;height:18px;vertical-align:middle"> Practice mode <span class="cg">(start at the boss fight, doesn't count)</span></label></p>
+    <p style="font-size:clamp(16px,2.4vw,22px)">Weapon:
+      <label style="cursor:pointer;margin:0 8px"><input type="radio" name="weapon" value="hype" style="width:16px;height:16px;vertical-align:middle"> <b style="color:#c08cff">Hyperion</b> <span class="cg">(explosion, short range)</span></label>
+      <label style="cursor:pointer;margin:0 8px"><input type="radio" name="weapon" value="term" style="width:16px;height:16px;vertical-align:middle"> <b style="color:#ff5555">Terminator</b> <span class="cg">(3 arrows, long range)</span></label></p>
     <p id="pbLine" class="cg"></p>
     <p style="color:#ffcc33;font-size:clamp(13px,1.8vw,17px)">Version 3.0 · Gold Shockwave update</p>
   </div>
@@ -302,7 +305,7 @@ function loadSection(i){
 }
 function loadBoss(){
   musicPlay('boss');
-  S.phase='boss'; S.terms=[]; S.gateOpen=false; S.lay=BOSS_LAYOUT; S.adj=buildGraph(S.lay); S.bossMax=S.th?4000:S.D.boss; S.bossHp=S.bossMax; S.soloMsg=false; S.enraged=false; S.charge=0; S.taunt=0; S.lassoT=0; S.zone=null; S.zoneT=8; S.laserFire=null; S.pOrbsB=[]; S.pSpawnT=3; S.slamT=2.5; S.laserT=4; S.waveT=3; S.circles=[]; S.slams=[]; S.waves=[];
+  S.phase='boss'; S.terms=[]; S.gateOpen=false; S.lay=BOSS_LAYOUT; S.adj=buildGraph(S.lay); S.bossMax=S.th?4000:S.D.boss; S.bossHp=S.bossMax; S.soloMsg=false; S.enraged=false; S.charge=0; S.taunt=0; S.lassoT=0; S.zone=null; S.zoneT=8; S.arrows=[]; S.laserFire=null; S.pOrbsB=[]; S.pSpawnT=3; S.slamT=2.5; S.laserT=4; S.waveT=3; S.circles=[]; S.slams=[]; S.waves=[];
   Object.assign(S.me,{x:330,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:330,y:270}});
   S.hp=S.maxHp; S.mana=1000;
   S.gold={x:640,y:270,target:'you'};
@@ -316,7 +319,7 @@ function setButtons(){
   const b=$('btns'); b.innerHTML='';
   const mk=(txt,cls,fn)=>{ const e=document.createElement('button'); e.textContent=txt; if(cls) e.className=cls; e.addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation(); fn(); }); b.appendChild(e); };
   mk('Jump','',jump);
-  if(S.phase==='boss'){ mk('Heal','heal',healCircle); mk('Lasso','pulse',lasso); mk('Hit','',attack); if(S.th) mk('⚡ Laser','pulse',fireLaser); }
+  if(S.phase==='boss'){ mk('Heal','heal',healCircle); mk('Lasso','pulse',lasso); mk(WEAPON==='term'?'Shoot':'Blast','',attack); if(S.th) mk('⚡ Laser','pulse',fireLaser); }
 }
 
 /* ---------- chat ---------- */
@@ -538,7 +541,7 @@ function closeTerm(solved){
 
 /* ---------- abilities ---------- */
 function jump(){ const me=S&&S.me; if(!S||S.termOpen||me.air>0||me.fall>0||(S.phase!=='play'&&S.phase!=='boss')) return; me.air=AIR; me.jx=null; beep(330,.06,'triangle',.04); }
-function healCircle(){ if(!S||S.phase!=='boss'||S.mana<350) return; S.mana-=350; S.circles.push({x:S.me.x,y:S.me.y,t:4}); beep(660,.2,'sine',.06); }
+function healCircle(){ if(!S||S.phase!=='boss'||S.mana<355) return; S.mana-=355; S.circles.push({x:S.me.x,y:S.me.y,t:4}); beep(660,.2,'sine',.06); }
 function lasso(){
   if(!S||S.phase!=='boss'||S.pulseCd>0||S.mana<200) return;
   const G=S.gold, me=S.me; if(dist(me,G)>380){ chat('<span class="cg">Goldor is too far away for your lasso.</span>'); return; }
@@ -547,8 +550,15 @@ function lasso(){
   chat('<span class="cgo">You lassoed Goldor!</span> He is locked on you for 4s.');
 }
 const mendPulse=lasso;
-function attack(){ if(!S||S.phase!=='boss'||S.cd>0) return; S.cd=0.25;   // capped at 4 hits per second
-  if(dist(S.me,S.gold)<120){ const mmOnly=S.mm&&!S.th; S.bossHp-=mmOnly?1.5:1.75; S.score+=1; S.fx.push({type:'dmg',x:S.gold.x+rand(-20,20),y:S.gold.y-40,t:0,txt:mmOnly?'160k':'185k'}); S.fx.push({type:'slash',x:S.gold.x,y:S.gold.y,t:0}); beep(200,.06); } }
+function attack(){ if(!S||S.phase!=='boss'||S.cd>0) return; const mult=(S.mm&&!S.th)?2/3:1;
+  if(WEAPON==='term'){   // Terminator: 3 arrows, long range, small cooldown
+    S.cd=0.45; const a=Math.atan2(S.gold.y-S.me.y,S.gold.x-S.me.x)+rand(-0.07,0.07);
+    for(const off of [-0.17,0,0.17]) S.arrows.push({x:S.me.x,y:S.me.y,vx:Math.cos(a+off)*650,vy:Math.sin(a+off)*650,life:1.15,dmg:0.8*mult});
+    beep(760,.05,'triangle',.04); beep(520,.05,'triangle',.03); }
+  else {                 // Hyperion: explosion around you, short range, max 4 a second
+    if(S.mana<65){ beep(120,.06,'square',.03); return; } S.mana-=65;
+    S.cd=0.25; S.fx.push({type:'boom',x:S.me.x,y:S.me.y,t:0}); burst(S.me.x,S.me.y,'#c08cff',14); beep(180,.1,'sawtooth',.05);
+    if(dist(S.me,S.gold)<150){ const d=2.0*mult; S.bossHp-=d; S.score+=1; S.fx.push({type:'dmg',x:S.gold.x+rand(-20,20),y:S.gold.y-40,t:0,txt:Math.round(d*100)+'k'}); } } }
 
 /* ---------- input ---------- */
 addEventListener('keydown',e=>{
@@ -565,7 +575,7 @@ function nearestTerm(){ let best=null,bd=70; for(const t of S.terms) if(!t.done)
 cv.addEventListener('pointerdown',e=>{
   if(!S||S.termOpen||(S.phase!=='play'&&S.phase!=='boss')) return;
   const r=cv.getBoundingClientRect(), x=(e.clientX-r.left)/r.width*W, y=(e.clientY-r.top)/r.height*H, p={x,y};
-  if(S.phase==='boss' && dist(p,S.gold)<50){ if(dist(S.me,S.gold)<120) attack(); else if(CTM) setDest(S.gold.x-70,S.gold.y); return; }
+  if(S.phase==='boss' && dist(p,S.gold)<50){ if(WEAPON==='term'||dist(S.me,S.gold)<150) attack(); else if(CTM) setDest(S.gold.x-70,S.gold.y); return; }
   for(const t of S.terms) if(!t.done && dist(p,t)<30){ if(dist(S.me,t)<70) openTerm(t); else if(CTM){ setDest(t.x,t.y); S.me.auto=t; } return; }
   if(CTM){ setDest(x,y); S.me.auto=null; }
 });
@@ -667,7 +677,12 @@ function fireLaser(){
   S.power=0; S.laserFire={t:3,ang:Math.atan2(S.gold.y-S.me.y,S.gold.x-S.me.x),done:0};
   S.shake=8; beep(70,.8,'sawtooth',.07); beep(140,.8,'square',.04);
   chat('<span class="cgo"><b>⚡ POWER LASER!</b></span> Keep it on him!'); }
+function updateArrows(dt){ const G=S.gold; S.arrows=S.arrows||[];
+  for(const a of S.arrows){ (a.trail=a.trail||[]).unshift([a.x,a.y]); if(a.trail.length>9) a.trail.pop(); a.x+=a.vx*dt; a.y+=a.vy*dt; a.life-=dt;
+    if(Math.hypot(a.x-G.x,a.y-G.y)<48){ a.life=0; burst(a.x,a.y,'#ff5a3a',8); S.bossHp-=a.dmg; S.score+=1; S.fx.push({type:'dmg',x:G.x+rand(-25,25),y:G.y-40,t:0,txt:Math.round(a.dmg*100)+'k'}); } }
+  S.arrows=S.arrows.filter(a=>a.life>0&&a.x>0&&a.x<W&&a.y>0&&a.y<H); }
 function bossUpdate(dt){
+  updateArrows(dt);
   const me=S.me, G=S.gold, alive=S.npcs.filter(n=>!n.dead);
   // aggro: Goldor hits whoever is closest to him, so the tank has to stay near
   S.taunt=Math.max(0,(S.taunt||0)-dt);
@@ -751,10 +766,13 @@ function bossUpdate(dt){
   for(const c of S.circles){ c.t-=dt; if(dist(me,c)<150) S.hp=Math.min(S.maxHp,S.hp+210*dt); for(const n of alive) if(dist(n,c)<150){ const b=n.hp; n.hp=Math.min(n.max,n.hp+210*dt); S.healed+=n.hp-b; } }
   S.circles=S.circles.filter(c=>c.t>0);
   S.hp=Math.min(S.maxHp,S.hp+25*dt);
+  for(const n of alive) if(n.immune>0){ n.immune-=dt; n.hp=Math.max(n.hp,n.prevHp??n.hp); }   // immune: nothing can hurt them
+  for(const n of alive) n.prevHp=n.hp;
   for(const n of alive){ if(n.hp<=0){ n.hp=0; n.dead=true; n.reviveT=21; chat(`<span style="color:${n.col}">${n.name}</span> <span class="cr">died!</span>`); beep(150,.4,'sawtooth',.05); burst(n.x,n.y,'#888',20); setTimeout(()=>roast('teamdeath',n,true),500); }
     else if(n.hp<n.max*0.3 && S.t-(S.lowT[n.id]||-99)>9){ S.lowT[n.id]=S.t; roast('lowhp',n); } }
   for(const n of S.npcs) if(n.dead && n.reviveT!==undefined){ n.reviveT-=dt;
-    if(n.reviveT<=0){ n.dead=false; n.hp=n.max*0.5; n.reviveT=undefined; n.air=0; burst(n.x,n.y,'#7dffa8',30); beep(660,.2,'sine',.05);
+    if(n.reviveT<=0){ n.dead=false; n.hp=n.max*0.5; n.reviveT=undefined; n.air=0; n.immune=5;
+      const far=[[70,70],[890,70],[70,470],[890,470]].sort((a,b)=>Math.hypot(b[0]-S.gold.x,b[1]-S.gold.y)-Math.hypot(a[0]-S.gold.x,a[1]-S.gold.y))[0]; n.x=far[0]; n.y=far[1]; burst(n.x,n.y,'#7dffa8',30); beep(660,.2,'sine',.05);
       chat(`<span style="color:${n.col}">${n.name}</span> <span class="cgr">revived themselves!</span>`); } }
   if(!S.enraged && S.bossHp<S.bossMax/2){ S.enraged=true; S.shake=14; burst(G.x,G.y,'#ff4422',40);
     chat('<span class="cgo">[BOSS] Goldor</span>: <span class="cr"><b>ENOUGH! You will all burn!</b></span>'); chat('<span class="cr">Goldor is ENRAGED</span>: faster slams and lasers!'); beep(70,.6,'sawtooth',.08); }
@@ -802,6 +820,8 @@ function drawPerson(p,col,body,trim,name,big,extra){
   g.save(); g.translate(x+s*0.62,y+s*0.05); g.rotate(-0.5);
   if(kind==='d'){ g.strokeStyle='#d4b06a'; g.lineWidth=2.5*u; g.beginPath(); g.moveTo(0,8*u); g.lineTo(0,-24*u); g.stroke(); g.strokeStyle='rgba(255,255,255,.7)'; g.lineWidth=1; g.beginPath(); g.moveTo(0,-24*u); g.lineTo(6*u,-8*u); g.stroke(); }
   else if(kind==='v'){ g.fillStyle=mgrad(-5*u,0,5*u,0,'#b9c2cc'); g.beginPath(); g.moveTo(0,-26*u); g.lineTo(6*u,-6*u); g.lineTo(-6*u,-6*u); g.closePath(); g.fill(); g.fillStyle='#d4a017'; g.fillRect(-6*u,-6*u,12*u,6*u); glowDot(0,-3*u,1.6*u,'#3bff8a',6); }
+  else if(kind==='you'&&WEAPON==='term'){ g.strokeStyle='#3a2a5a'; g.lineWidth=3.5*u; g.beginPath(); g.arc(0,-8*u,14*u,Math.PI*0.6,Math.PI*1.4); g.stroke();
+    g.strokeStyle='#e03030'; g.lineWidth=1.2*u; g.stroke(); g.strokeStyle='#ddd'; g.lineWidth=1; g.beginPath(); g.moveTo(-4.3*u,-21.3*u); g.lineTo(-4.3*u,5.3*u); g.stroke(); }
   else { g.save(); if(kind==='you'){ g.shadowColor='#c08cff'; g.shadowBlur=12; } g.fillStyle=mgrad(-3*u,0,3*u,0,K.weapon); g.beginPath(); g.moveTo(0,-30*u); g.lineTo(3.5*u,-24*u); g.lineTo(3.5*u,0); g.lineTo(-3.5*u,0); g.lineTo(-3.5*u,-24*u); g.closePath(); g.fill(); g.restore();
     g.fillStyle=kind==='you'?'#e0b02a':'#1a1a1a'; g.fillRect(-7*u,0,14*u,3*u); g.fillStyle='#3a2414'; g.fillRect(-1.5*u,3*u,3*u,7*u); }
   g.restore();
@@ -951,6 +971,7 @@ function drawScene(){
   // people + Goldor, sorted by depth
   const ents=[...S.npcs.filter(n=>n.state!=='away'&&n.state!=='dead').map(n=>{ n.hop=false; return {y:n.y,f:()=>(n.glowT>0&&!n.dead&&(g.save(),g.globalAlpha=Math.min(1,n.glowT*1.4),g.shadowColor='#55ff88',g.shadowBlur=24,g.strokeStyle='#7dffa8',g.lineWidth=4,g.beginPath(),g.arc(n.x,n.y,24,0,7),g.stroke(),g.fillStyle='rgba(85,255,136,.18)',g.fill(),g.restore()),drawPerson(n,n.col,n.body,n.trim,n.name,false,
       S.phase==='boss'&&!n.dead?(yy,s)=>{ g.fillStyle='#000'; g.fillRect(n.x-18,yy+s/2+4,36,5); g.fillStyle=n.hp/n.max<.35?'#ff5555':'#55ff55'; g.fillRect(n.x-17,yy+s/2+5,34*n.hp/n.max,3); }:null))}; }),
+    ...S.npcs.filter(n=>n.immune>0&&!n.dead&&S.phase==='boss').map(n=>({y:n.y-0.1,f:()=>{ g.save(); g.strokeStyle=`rgba(120,220,255,${.5+.4*Math.sin(performance.now()/80)})`; g.lineWidth=3; g.shadowColor='#7fe0ff'; g.shadowBlur=14; g.beginPath(); g.arc(n.x,n.y,26,0,7); g.stroke(); g.restore(); }})),
     {y:S.me.y,f:()=>drawPerson(S.me,TEAM.you.col,TEAM.you.body,TEAM.you.trim,'You',true)},
     {y:S.gold.y,f:()=>{ if(S.enraged&&S.phase==='boss'){ g.save(); g.fillStyle=`rgba(255,40,20,${.18+.1*Math.sin(performance.now()/90)})`; g.beginPath(); g.arc(S.gold.x,S.gold.y,62,0,7); g.fill(); g.restore(); } if(S.charge>0&&S.phase==='boss'&&S.charge<0.55){ g.save(); g.font=`bold ${70+Math.sin(performance.now()/40)*8}px VT323, monospace`; g.textAlign='center';
       g.fillStyle='#ffdd33'; g.strokeStyle='#5a3a00'; g.lineWidth=6; g.shadowColor='#ffaa00'; g.shadowBlur=24; g.strokeText('JUMP!',480,150); g.fillText('JUMP!',480,150); g.restore(); }
@@ -970,6 +991,16 @@ function drawScene(){
     g.strokeStyle='rgba(255,150,30,.35)'; g.lineWidth=60*f; g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1); g.stroke();
     g.strokeStyle='rgba(255,210,90,.8)'; g.lineWidth=30*f; g.stroke(); g.strokeStyle='#fffbe8'; g.lineWidth=10*f; g.stroke(); g.restore();
     if(L.on){ g.save(); g.fillStyle='#fff'; g.font='bold 24px VT323, monospace'; g.textAlign='center'; g.fillText('HIT!',S.gold.x,S.gold.y-80); g.restore(); } }
+  for(const ar of (S.arrows||[])){ const l=Math.hypot(ar.vx,ar.vy), ux=ar.vx/l, uy=ar.vy/l, tr=ar.trail||[]; g.save(); g.lineCap='round';
+    for(let k=0;k<tr.length;k++){ const p0=k?tr[k-1]:[ar.x,ar.y], p1=tr[k], f=1-k/tr.length;
+      g.strokeStyle=`rgba(255,${Math.round(80+120*f)},40,${0.55*f})`; g.lineWidth=7*f+1; g.shadowColor='#ff3a1a'; g.shadowBlur=14*f;
+      g.beginPath(); g.moveTo(p0[0],p0[1]); g.lineTo(p1[0],p1[1]); g.stroke(); }
+    if(Math.random()<0.35) S.parts.push({x:ar.x-ux*20,y:ar.y-uy*20,vx:rand(-30,30),vy:rand(-30,30),life:0.35,col:Math.random()<.5?'#ffb040':'#ff4a2a'});
+    g.shadowColor='#ff3a3a'; g.shadowBlur=12;
+    const sh=g.createLinearGradient(ar.x-ux*24,ar.y-uy*24,ar.x,ar.y); sh.addColorStop(0,'#5a2a12'); sh.addColorStop(1,'#f4e2c0');
+    g.strokeStyle=sh; g.lineWidth=2.6; g.beginPath(); g.moveTo(ar.x-ux*24,ar.y-uy*24); g.lineTo(ar.x,ar.y); g.stroke();
+    g.fillStyle='#ff2a2a'; for(const sd of [1,-1]){ g.beginPath(); g.moveTo(ar.x-ux*24,ar.y-uy*24); g.lineTo(ar.x-ux*30-uy*5*sd,ar.y-uy*30+ux*5*sd); g.lineTo(ar.x-ux*18,ar.y-uy*18); g.closePath(); g.fill(); }
+    g.fillStyle='#fff3c0'; g.shadowColor='#ffd040'; g.shadowBlur=16; g.beginPath(); g.moveTo(ar.x+ux*9,ar.y+uy*9); g.lineTo(ar.x-uy*4.5,ar.y+ux*4.5); g.lineTo(ar.x+uy*4.5,ar.y-ux*4.5); g.closePath(); g.fill(); g.restore(); }
   if(S.me.tx!==null){ g.strokeStyle='rgba(255,255,255,.5)'; g.lineWidth=2; g.beginPath(); g.arc(S.me.tx,S.me.ty,8,0,7); g.stroke(); }
   for(const f of S.fx){ const a=Math.max(0,1-f.t/0.7);
     if(f.type==='beam'){ g.save(); g.globalAlpha=a; g.strokeStyle=f.col; g.lineWidth=3; g.shadowColor=f.col; g.shadowBlur=10; g.beginPath(); g.moveTo(f.x,f.y); g.lineTo(f.x2,f.y2); g.stroke(); g.restore(); }
@@ -978,6 +1009,7 @@ function drawScene(){
     else if(f.type==='pulse'){ g.save(); g.globalAlpha=a; g.strokeStyle='#ff77ff'; g.shadowColor='#ff55ff'; g.shadowBlur=20; g.lineWidth=6; g.beginPath(); g.arc(f.x,f.y,30+f.t*700,0,7); g.stroke(); g.restore(); }
     else if(f.type==='slash'){ g.save(); g.globalAlpha=a; g.strokeStyle='#ffffff'; g.lineWidth=4; g.beginPath(); g.moveTo(f.x-30,f.y-30+f.t*20); g.lineTo(f.x+30,f.y+30-f.t*20); g.stroke(); g.restore(); }
     else if(f.type==='hit'){ g.save(); g.globalAlpha=a; g.fillStyle='#ff4444'; g.font='bold 18px VT323, monospace'; g.textAlign='center'; g.fillText(f.txt||'-❤',f.x,f.y-f.t*30); g.restore(); }
+    else if(f.type==='boom'){ g.save(); g.globalAlpha=a; g.shadowColor='#c08cff'; g.shadowBlur=20; g.strokeStyle='#d9a8ff'; g.lineWidth=6; g.beginPath(); g.arc(f.x,f.y,20+f.t*190,0,7); g.stroke(); g.fillStyle='rgba(190,120,255,.18)'; g.fill(); g.restore(); }
     else if(f.type==='score'){ const a2=Math.max(0,1-f.t/1.2); g.save(); g.globalAlpha=a2; g.fillStyle='#ffd34d'; g.strokeStyle='#000'; g.lineWidth=3; g.font='bold 24px VT323, monospace'; g.textAlign='center'; g.strokeText(f.txt,f.x,f.y-f.t*45); g.fillText(f.txt,f.x,f.y-f.t*45); g.restore(); }
     else if(f.type==='dmg'){ g.save(); g.globalAlpha=a; g.fillStyle='#fff3a0'; g.font='bold 18px VT323, monospace'; g.textAlign='center'; g.fillText(f.txt,f.x,f.y-f.t*40); g.restore(); } }
   for(const p of S.parts){ g.globalAlpha=Math.min(1,p.life*2); g.fillStyle=p.col; g.fillRect(p.x-2,p.y-2,4,4); } g.globalAlpha=1;
@@ -991,7 +1023,7 @@ function hud(){
   $('hpBar').style.transform=`scaleX(${S.hp/S.maxHp})`; $('manaBar').style.transform=`scaleX(${S.mana/1000})`;
   $('bossHp').style.transform=`scaleX(${Math.max(0,S.bossHp/S.bossMax)})`;
   $('keys').innerHTML=S.phase==='boss'
-    ? `<span class="cgr">[Q] Healing Circle</span> 350✎ · <span class="cgo">[R] Lasso</span> ${S.pulseCd>0?Math.ceil(S.pulseCd)+'s':'200✎'}${S.taunt>0?' <span class="cy">TAUNT '+S.taunt.toFixed(1)+'s</span>':''} · [Space] Jump · [F] Hit${S.th?` · <span class="cgo">[G] ⚡ Laser ${S.power}/5</span>`:''}`
+    ? `<span class="cgr">[Q] Healing Circle</span> 355✎ · <span class="cgo">[R] Lasso</span> ${S.pulseCd>0?Math.ceil(S.pulseCd)+'s':'200✎'}${S.taunt>0?' <span class="cy">TAUNT '+S.taunt.toFixed(1)+'s</span>':''} · [Space] Jump · [F] ${WEAPON==='term'?'Terminator':'Hyperion 65✎'}${S.th?` · <span class="cgo">[G] ⚡ Laser ${S.power}/5</span>`:''}`
     : '[Space] Jump · [E] Terminal'+(S.th?` · <span class="cgo">⚡ Power ${S.power}/5</span>`:'');
   if(S.phase==='boss') $('party').innerHTML=S.npcs.map(n=>`<div style="color:${n.dead?'#777':n.col}">${n.name}${n.dead?' ☠'+(n.reviveT!==undefined?' <span class="cg">'+Math.ceil(n.reviveT)+'s</span>':''):''}${S.gold.target===n.id?' <span class="cr">⚠</span>':''}</div><div class="bar"><i style="transform:scaleX(${n.hp/n.max})"></i></div>`).join('');
 }
@@ -1026,6 +1058,8 @@ function endRun(won,why){
 $('startBtn').onclick=()=>{ $('screen').style.display='none'; beep(440,.08); newGame(false); };
 $('mmBtn').onclick=()=>{ $('screen').style.display='none'; beep(330,.12); newGame('mm'); };
 $('thBtn').onclick=()=>{ $('screen').style.display='none'; beep(220,.15); newGame('th'); };
+let WEAPON='hype'; try{ WEAPON=localStorage.getItem('goldorWeapon')==='term'?'term':'hype'; }catch(e){}
+document.querySelectorAll('input[name=weapon]').forEach(r=>{ r.checked=r.value===WEAPON; r.onchange=()=>{ WEAPON=r.value; try{ localStorage.setItem('goldorWeapon',WEAPON); }catch(e){} }; });
 let PRACTICE=false;
 $('practice').onchange=e=>{ PRACTICE=e.target.checked; };
 let CTM=false; try{ CTM=localStorage.getItem('goldorCTM')==='on'; }catch(e){}
