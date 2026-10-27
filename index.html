@@ -305,7 +305,7 @@ function loadSection(i){
 }
 function loadBoss(){
   musicPlay('boss');
-  S.phase='boss'; S.terms=[]; S.gateOpen=false; S.lay=BOSS_LAYOUT; S.adj=buildGraph(S.lay); S.bossMax=S.th?4000:S.D.boss; S.bossHp=S.bossMax; S.soloMsg=false; S.enraged=false; S.charge=0; S.taunt=0; S.lassoT=0; S.zone=null; S.zoneT=8; S.arrows=[]; S.laserFire=null; S.pOrbsB=[]; S.pSpawnT=3; S.slamT=2.5; S.laserT=4; S.waveT=3; S.circles=[]; S.slams=[]; S.waves=[];
+  S.phase='boss'; S.terms=[]; S.gateOpen=false; S.lay=BOSS_LAYOUT; S.adj=buildGraph(S.lay); S.bossMax=S.th?4000:S.D.boss; S.bossHp=S.bossMax; S.soloMsg=false; S.enraged=false; S.charge=0; S.taunt=0; S.lassoT=0; S.zone=null; S.zoneT=8; S.arrows=[]; S.laserFire=null; S.pOrbsB=[]; S.pSpawnT=3; S.slamT=2.5; S.laserT=4; S.waveT=3; S.dblArm=false; S.dblWait=0; S.againT=0; S.waveN=0; S.dblNext=false; S.circles=[]; S.slams=[]; S.waves=[];
   Object.assign(S.me,{x:330,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:330,y:270}});
   S.hp=S.maxHp; S.mana=1000;
   S.gold={x:640,y:270,target:'you'};
@@ -742,9 +742,14 @@ function bossUpdate(dt){
   S.laserT-=dt; if(S.laserT<=0 && alive.length){ S.laserT=S.D.laser*(S.enraged&&S.mm?0.8:1); const n=pick(alive); n.hp-=S.D.laserDmg; S.fx.push({type:'laser',x:G.x,y:G.y,x2:n.x,y2:n.y,t:0}); S.fx.push({type:'hit',x:n.x,y:n.y-18,t:0,txt:'-'+S.D.laserDmg}); beep(900,.08,'sawtooth',.03); }
   // shockwave: jump over it
   S.waveT-=dt;
-  if(S.waveT<=0 && !(S.charge>0)){ S.charge=1.0; chat('<span class="cgo"><b>Goldor is charging a GOLD SHOCKWAVE!</b></span> <span class="cr">It kills instantly. JUMP!</span>'); beep(120,.5,'triangle',.05); }
-  if(S.charge>0){ S.charge-=dt; if(S.charge<=0){ S.waveT=S.mm?5:6; S.waves.push({x:G.x,y:G.y,r:30,hit:false}); S.shake=6; beep(90,.3,'sawtooth',.06); } }
-  for(const w of S.waves){ w.r+=300*dt; if(!w.hit && Math.abs(dist(me,w)-w.r)<22){ w.hit=true; if(me.air<=0){ S.oneTap='shockwave'; oneTapKill(); } }
+  if(S.waveT<=0 && !(S.charge>0)){ S.charge=1.0; S.waveN=(S.waveN||0)+1; const dch=S.th?1/6:S.mm?1/10:0; S.dblNext=(S.th&&S.waveN===1)||Math.random()<dch;
+    chat(S.dblNext?'<span class="cgo"><b>Goldor is charging a DOUBLE GOLD SHOCKWAVE!</b></span> <span class="cr">Jump the gold ring, land, then jump the orange one!</span>':'<span class="cgo"><b>Goldor is charging a GOLD SHOCKWAVE!</b></span> <span class="cr">It kills instantly. JUMP!</span>'); beep(120,.5,'triangle',.05); }
+  if(S.charge>0){ S.charge-=dt; if(S.charge<=0){ S.waveT=S.mm?5:12; S.waves.push({x:G.x,y:G.y,r:30,hit:false,dbl:S.dblNext}); S.dblNext=false; S.shake=6; beep(90,.3,'sawtooth',.06); } }
+  if(S.dblArm && !(me.air>0)){ S.dblArm=false; S.dblWait=Math.max(0.15,0.6-Math.max(0,dist(me,G)-30)/330); S.againT=1.1; beep(140,.25,'square',.05); }
+  if(S.dblWait>0){ S.dblWait-=dt; if(S.dblWait<=0){ S.dblWait=0; S.waves.push({x:G.x,y:G.y,r:30,hit:false,second:true,spd:330}); S.shake=10; beep(70,.4,'sawtooth',.08); } }
+  if(S.againT>0) S.againT-=dt;
+  for(const w of S.waves){ w.r+=(w.spd||300)*dt; if(!w.hit && Math.abs(dist(me,w)-w.r)<22){ w.hit=true; if(me.air<=0){ S.oneTap='shockwave'; oneTapKill(); } else if(w.dbl) S.dblArm=true; }
+    if(w.dbl && !w.hit && w.r>=555) S.dblArm=true;
     // teammates jump it too, but 1 in 17 times they mess up and die
     w.nh=w.nh||{}; for(const n of alive) if(!w.nh[n.id] && Math.abs(dist(n,w)-w.r)<30){ w.nh[n.id]=true;
       if(Math.random()<1/17){ n.hp=0; chat(`<span style="color:${n.col}">${n.name}</span> <span class="cr">didn't jump the shockwave!</span> 💀`); }
@@ -963,8 +968,8 @@ function drawScene(){
   for(const s of S.slams) if(!s.done){ const k=1-s.t/1.25; g.save(); g.fillStyle=`rgba(255,40,30,${.15+k*.25})`; g.strokeStyle='#ff3b30'; g.lineWidth=3;
     g.beginPath(); g.arc(s.x,s.y,s.r,0,7); g.fill(); g.stroke(); g.fillStyle='rgba(255,90,60,.45)'; g.beginPath(); g.arc(s.x,s.y,s.r*k,0,7); g.fill(); g.restore(); }
   for(const w of S.waves){ g.save(); g.globalCompositeOperation='lighter';
-    g.shadowColor='#ffcc33'; g.shadowBlur=30; g.strokeStyle='rgba(255,190,40,.55)'; g.lineWidth=48; g.beginPath(); g.arc(w.x,w.y,w.r,0,7); g.stroke();
-    g.strokeStyle='rgba(255,215,90,.95)'; g.lineWidth=20; g.stroke(); g.strokeStyle='#fff6c8'; g.lineWidth=4; g.stroke();
+    g.shadowColor=w.second?'#ff6a1a':'#ffcc33'; g.shadowBlur=30; g.strokeStyle=w.second?'rgba(255,110,30,.55)':'rgba(255,190,40,.55)'; g.lineWidth=48; g.beginPath(); g.arc(w.x,w.y,w.r,0,7); g.stroke();
+    g.strokeStyle=w.second?'rgba(255,140,50,.95)':'rgba(255,215,90,.95)'; g.lineWidth=20; g.stroke(); g.strokeStyle='#fff6c8'; g.lineWidth=4; g.stroke();
     for(let k=0;k<24;k++){ const a=k/24*Math.PI*2+w.r/60; g.fillStyle='#ffe680'; g.fillRect(w.x+Math.cos(a)*w.r-2,w.y+Math.sin(a)*w.r-2,4,4); }
     g.restore(); }
   for(const n of (S.phase==='play'?S.npcs:[])) if(n.state==='work'){ g.fillStyle='#000'; g.fillRect(n.x-20,n.y+18,40,6); g.fillStyle=n.col; g.fillRect(n.x-19,n.y+19,38*n.prog,4); }
@@ -974,7 +979,8 @@ function drawScene(){
     ...S.npcs.filter(n=>n.immune>0&&!n.dead&&S.phase==='boss').map(n=>({y:n.y-0.1,f:()=>{ g.save(); g.strokeStyle=`rgba(120,220,255,${.5+.4*Math.sin(performance.now()/80)})`; g.lineWidth=3; g.shadowColor='#7fe0ff'; g.shadowBlur=14; g.beginPath(); g.arc(n.x,n.y,26,0,7); g.stroke(); g.restore(); }})),
     {y:S.me.y,f:()=>drawPerson(S.me,TEAM.you.col,TEAM.you.body,TEAM.you.trim,'You',true)},
     {y:S.gold.y,f:()=>{ if(S.enraged&&S.phase==='boss'){ g.save(); g.fillStyle=`rgba(255,40,20,${.18+.1*Math.sin(performance.now()/90)})`; g.beginPath(); g.arc(S.gold.x,S.gold.y,62,0,7); g.fill(); g.restore(); } if(S.charge>0&&S.phase==='boss'&&S.charge<0.55){ g.save(); g.font=`bold ${70+Math.sin(performance.now()/40)*8}px VT323, monospace`; g.textAlign='center';
-      g.fillStyle='#ffdd33'; g.strokeStyle='#5a3a00'; g.lineWidth=6; g.shadowColor='#ffaa00'; g.shadowBlur=24; g.strokeText('JUMP!',480,150); g.fillText('JUMP!',480,150); g.restore(); }
+      g.fillStyle='#ffdd33'; g.strokeStyle='#5a3a00'; g.lineWidth=6; g.shadowColor='#ffaa00'; g.shadowBlur=24; g.strokeText('JUMP!',480,150); g.fillText('JUMP!',480,150); g.restore(); } if(S.againT>0&&S.phase==='boss'){ g.save(); g.font=`bold ${66+Math.sin(performance.now()/40)*8}px VT323, monospace`; g.textAlign='center';
+      g.fillStyle='#ff8a2a'; g.strokeStyle='#5a1a00'; g.lineWidth=6; g.shadowColor='#ff5a00'; g.shadowBlur=24; g.strokeText('JUMP AGAIN!',480,150); g.fillText('JUMP AGAIN!',480,150); g.restore(); }
     if(S.charge>0&&S.phase==='boss'){ const k=1-S.charge; g.save(); g.strokeStyle=`rgba(255,160,40,${.5+.5*Math.sin(performance.now()/60)})`; g.lineWidth=6; g.beginPath(); g.arc(S.gold.x,S.gold.y,90-k*50,0,7); g.stroke();
       g.fillStyle='#ffdd55'; g.font='bold 40px VT323, monospace'; g.textAlign='center'; g.fillText('!',S.gold.x,S.gold.y-70); g.restore(); }
     drawGoldor(S.gold,S.phase==='boss'); }}].sort((a,b)=>a.y-b.y);
