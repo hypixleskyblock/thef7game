@@ -550,7 +550,7 @@ function lasso(){
   chat('<span class="cgo">You lassoed Goldor!</span> He is locked on you for 4s.');
 }
 const mendPulse=lasso;
-function attack(){ if(!S||S.phase!=='boss'||S.cd>0) return; const mult=(S.mm&&!S.th)?2/3:1;
+function attack(){ if(!S||S.phase!=='boss'||S.cd>0) return; const mult=S.th?1.7:S.mm?(2/3)*1.4:1;
   if(WEAPON==='term'){   // Terminator: 3 arrows, long range, small cooldown
     S.cd=0.45; const a=Math.atan2(S.gold.y-S.me.y,S.gold.x-S.me.x)+rand(-0.07,0.07);
     for(const off of [-0.17,0,0.17]) S.arrows.push({x:S.me.x,y:S.me.y,vx:Math.cos(a+off)*650,vy:Math.sin(a+off)*650,life:1.15,dmg:0.8*mult});
@@ -743,7 +743,7 @@ function bossUpdate(dt){
   S.laserT-=dt; if(S.laserT<=0 && alive.length){ S.laserT=S.D.laser*(S.enraged&&S.mm?0.8:1); const n=pick(alive); n.hp-=S.D.laserDmg; S.fx.push({type:'laser',x:G.x,y:G.y,x2:n.x,y2:n.y,t:0}); S.fx.push({type:'hit',x:n.x,y:n.y-18,t:0,txt:'-'+S.D.laserDmg}); beep(900,.08,'sawtooth',.03); }
   // shockwave: jump over it
   S.waveT-=dt;
-  if(S.waveT<=0 && !(S.charge>0)){ S.charge=1.0; S.waveN=(S.waveN||0)+1; const dch=S.th?1/6:S.mm?1/10:0; S.dblNext=(S.th&&S.waveN===1)||Math.random()<dch;
+  if(S.waveT<=0 && !(S.charge>0)){ S.charge=1.0; S.waveN=(S.waveN||0)+1; const dch=S.th?1/5:S.mm?1/8:0; S.dblNext=(S.th&&S.waveN===1)||Math.random()<dch;
     chat(S.dblNext?'<span class="cgo"><b>Goldor is charging a DOUBLE GOLD SHOCKWAVE!</b></span> <span class="cr">Jump the gold ring, land, then jump the orange one!</span>':'<span class="cgo"><b>Goldor is charging a GOLD SHOCKWAVE!</b></span> <span class="cr">It kills instantly. JUMP!</span>'); beep(120,.5,'triangle',.05); }
   if(S.charge>0){ S.charge-=dt; if(S.charge<=0){ S.waveT=S.mm?5:12; S.waves.push({x:G.x,y:G.y,r:30,hit:false,dbl:S.dblNext}); S.dblNext=false; S.shake=6; beep(90,.3,'sawtooth',.06); } }
   if(S.dblArm && !(me.air>0)){ S.dblArm=false; S.dblWait=Math.max(0.15,0.6-Math.max(0,dist(me,G)-30)/330); S.againT=1.1; beep(140,.25,'square',.05); }
