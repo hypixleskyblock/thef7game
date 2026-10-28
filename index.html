@@ -373,7 +373,7 @@ const LINES={
   teamdeath:["ty for the heals... oh wait","I died because our tank was busy","rip me, blame the tank","spectating now, thanks tank","see you in the lobby"],
   fast:["speed demon 🔥","ok that was fast","cracked tank","terminal diff","who is this guy"],
 };
-function say(n,txt){ chat(`<span class="cb">Party &gt;</span> <span style="color:${n.col}">${n.name}</span>: ${txt}`); }
+function say(n,txt){ if(S&&S.th){ chat(`<span class="cgo">[BOSS] Goldor</span>: ${txt}`); return; } chat(`<span class="cb">Party &gt;</span> <span style="color:${n.col}">${n.name}</span>: ${txt}`); }
 function roast(kind,who,force){
   if(!S||S.phase==='over') return; if(!force && S.t-S.roastT<3.5) return; S.roastT=S.t;
   const lobby=[TEAM.v,TEAM.r,TEAM.d];   // in a solo fight they heckle from the lobby
@@ -1051,14 +1051,14 @@ function endRun(won,why){
       <p>${S.mm?`<span class="cr">${MODE_NAME[S.mode]}</span> · `:''}Time <span class="cy">${fmt(S.t)}</span> · Essence <span class="cp">✦ ${S.essence}</span> · Falls <span class="cr">${S.falls}</span> · Deaths <span class="cr">${S.deaths}</span> · ${S.th?'<span style="color:#d07bff">Solo boss</span>':`Team alive <span class="cgr">${alive}/3</span>`}</p>
       <p class="cg">Run ${S.score} + Kill 2000 + Time ${timeB} + Heals ${healB} + Team ${aliveB}${S.deaths?` − Deaths ${S.deaths*500}`:''}${S.D.mult>1?' × '+S.D.mult:''}</p>
       <p>Score <span class="cgo" style="font-size:1.5em">★ ${total}</span> · Grade <span class="cgo" style="font-size:1.6em">${grade}</span> ${S.practice?'<span class="ca">Practice run (doesn\'t count)</span>':isPB?'<span class="cgr">NEW PERSONAL BEST!</span>':`<span class="cg">PB ★ ${pb[key]?pb[key].score:0}</span>`}</p>
-      <p><span class="cb">Party &gt;</span> <span style="color:${fan.col}">${fan.name}</span>: ${quote}</p>
+      ${S.th?`<p><span class="cgo">[BOSS] Goldor</span>: ${quote}</p>`:`<p><span class="cb">Party &gt;</span> <span style="color:${fan.col}">${fan.name}</span>: ${quote}</p>`}
       <button class="go" id="again">Run it again</button> <button class="go" id="menu" style="background:#3a3a46;border-color:#8a8a9a #22222a #22222a #8a8a9a">Menu</button>`;
     $('again').onclick=()=>{ sc.style.display='none'; newGame(S.mode); }; $('menu').onclick=()=>location.reload(); beep(523,.15,'triangle'); setTimeout(()=>beep(784,.3,'triangle'),160); }
   else { S.deaths++;
     const msg=S.killedBy==='zone'?'You were standing in the KILL ZONE when it went live. Watch for the flashing quarter and get out!':S.killedBy==='laser'?'The red laser ate you. Do the closest terminal first and keep moving right!':S.killedBy==='aura'?'You stepped into Goldor\'s red circle. That is instant death! Wait for him to walk past, or jump over the edge of it.':S.oneTap?`Goldor one-tapped you with his ${S.oneTap}. Get out of the red circle before it fills up, and jump the gold shockwave!`:why==='team'?'Your whole team died. Hold aggro and heal them!':(S.wasBoss?'Goldor crushed you. Heal through the slams and jump the shockwaves.':'You died in section '+(S.sec+1)+'. Watch the void and his red aura.');
     const r=pick(S.npcs.filter(n=>!n.dead).concat(S.npcs).concat([TEAM.v,TEAM.r,TEAM.d]).slice(0,3)), line=S.killedBy==='zone'?pick(["the whole quarter was flashing red 💀","bro stood in the kill zone","it literally warned you"]):S.killedBy==='laser'?pick(["the laser was SLOW and you still got caught 💀","outran by a laser","bro got lasered","try hard? more like try harder"]):S.killedBy==='aura'?pick(["you walked INTO the red circle 💀","bro hugged Goldor","the circle is red for a reason","instant L"]):S.oneTap?pick(["one tapped 💀💀","bro got deleted","that was a one shot and you stood in it","Master Mode said no"]):pick(why==='team'?["you had ONE job","the healer was the problem","we're never queueing with you again (jk)"]:["skill issue 💀","maybe try Normal mode lol","the tank died. the TANK.","bro tanked the floor instead","uninstall? (jk) (unless?)"]);
     S.score=Math.max(0,S.score-500);
-    sc.innerHTML=`<h2 style="color:#ff5555">${why==='team'?'Wipe!':'You died!'}</h2><p>${msg}</p><p><span class="cb">Party &gt;</span> <span style="color:${r.col}">${r.name}</span>: ${line}</p><p class="cg">−500 ★</p><button class="go" id="again">${S.wasBoss?'Retry boss':'Respawn'}</button> <button class="go" id="reset2" style="background:#7a1f1f;border-color:#e06a6a #4a1010 #4a1010 #e06a6a">↺ Reset run</button>`;
+    sc.innerHTML=`<h2 style="color:#ff5555">${why==='team'?'Wipe!':'You died!'}</h2><p>${msg}</p>${S.th?`<p><span class="cgo">[BOSS] Goldor</span>: ${line}</p>`:`<p><span class="cb">Party &gt;</span> <span style="color:${r.col}">${r.name}</span>: ${line}</p>`}<p class="cg">−500 ★</p><button class="go" id="again">${S.wasBoss?'Retry boss':'Respawn'}</button> <button class="go" id="reset2" style="background:#7a1f1f;border-color:#e06a6a #4a1010 #4a1010 #e06a6a">↺ Reset run</button>`;
     $('reset2').onclick=resetRun;
     $('again').onclick=()=>{ sc.style.display='none'; S.hp=S.maxHp; S.mana=1000; S.oneTap=null; S.killedBy=null; if(S.wasBoss) loadBoss(); else loadSection(S.sec); }; beep(110,.5,'sawtooth',.06); }
 }
