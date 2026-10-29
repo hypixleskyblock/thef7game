@@ -309,7 +309,8 @@ function loadBoss(){
   Object.assign(S.me,{x:330,y:270,tx:null,ty:null,auto:null,air:0,fall:0,safe:{x:330,y:270}});
   S.hp=S.maxHp; S.mana=1000;
   S.gold={x:640,y:270,target:'you'};
-  S.npcs=S.th?[]:['v','r','d'].map((id,k)=>({id,...TEAM[id],x:[140,110,140][k],y:[140,270,400][k],off:[-0.75,0,0.75][k],hp:S.D.thp*(S.mm?1.5:1),max:S.D.thp*(S.mm?1.5:1),shot:rand(0,.7),dead:false,healT:S.th?10:S.mm?15:6,glowT:0,circT:3+k*3.5+rand(0,2.5)}));
+  S.npcs=S.th?[]:['v','r','d'].map((id,k)=>({id,...TEAM[id],x:[140,110,140][k],y:[140,270,400][k],off:[-0.75,0,0.75][k],hp:S.D.thp*(S.mm?1.5:1),max:S.D.thp*(S.mm?1.5:1),shot:rand(0,.7),dead:false,healT:S.th?10:S.mm?15:6,glowT:0,circT:0}));
+  { const ord=[0,1,2].sort(()=>Math.random()-.5); const st=S.mm?4.2:2.8; S.npcs.forEach((n,k)=>n.circT=3+ord[k]*st); }
   $('boss').style.display='block'; $('party').style.display=S.th?'none':'block';
   chat('<span class="cgo">[BOSS] Goldor</span>: <span class="cy">None of you will get past me.</span>');
   chat(S.th?'<span style="color:#d07bff">Solo boss!</span> Hit him with <b>F</b> or click (max 4 hits a second), dodge the slams and jump the shockwaves.':'<span class="cgr">Tank job:</span> stay close so Goldor hits <b>you</b>, dodge or heal the slams, and keep your team alive.');
@@ -727,7 +728,7 @@ function bossUpdate(dt){
     n.healT-=dt; n.glowT=Math.max(0,n.glowT-dt);
     if(n.healT<=0){ n.healT=S.th?10:S.mm?15:6; const amt=n.max*(S.th?1/8:S.mm?3/16:1/8);   // Normal 1/8 every 6s, Master 3/16 every 15s, Try Hard 1/8 every 10s
       n.hp=Math.min(n.max,n.hp+amt); n.glowT=0.9; burst(n.x,n.y,'#55ff88',12); S.fx.push({type:'dmg',x:n.x,y:n.y-30,t:0,txt:'+'+Math.round(amt)+' ❤'}); }
-    n.circT-=dt; if(n.circT<=0){ n.circT=rand(8.5,12.5); S.circles.push({x:n.x,y:n.y,t:4,by:n.col}); beep(620+rand(-40,40),.15,'sine',.04); }
+    n.circT-=dt; if(n.circT<=0){ n.circT=S.mm?12.6:8.4; S.circles.push({x:n.x,y:n.y,t:4,by:n.col}); beep(620+rand(-40,40),.15,'sine',.04); }
     n.shot-=dt; if(n.shot<=0){ n.shot=0.7; S.bossHp-=5.5*(S.mm?1.5:1); S.score+=2; S.fx.push({type:'beam',x:n.x,y:n.y,x2:G.x,y2:G.y,col:n.col,t:0}); }
   }
   // splash slam aimed at Goldor's target: telegraph, then big area damage
