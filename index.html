@@ -568,7 +568,7 @@ addEventListener('keydown',e=>{
   if(k==='escape') closeTerm(false);
   if(k===' ') jump();
   if(k==='e' && S.phase==='play' && !S.termOpen){ const t=nearestTerm(); if(t) openTerm(t); }
-  if(k==='m') musicToggle(); if(k==='g') fireLaser(); if(k==='q') healCircle(); if(k==='r') lasso(); if(k==='f') attack();
+  if(k==='m') musicToggle(); if(k==='c') fireLaser(); if(k==='q') healCircle(); if(k==='r') lasso(); if(k==='f') attack();
 });
 addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 function nearestTerm(){ let best=null,bd=70; for(const t of S.terms) if(!t.done){ const d=dist(S.me,t); if(d<bd){ bd=d; best=t; } } return best; }
@@ -670,7 +670,7 @@ function npcGo(n,x,y,sp,dt){
 function porbPos(o){ if(o.m){ const r=moverRect(o.m,S.t); return {x:r[0]+r[2]/2,y:r[1]+r[3]/2}; } if(o.p) return {x:o.p[0]+o.p[2]/2,y:o.p[1]+o.p[3]/2}; return {x:o.x,y:o.y}; }
 function collectPower(o,q){ o.got=true; S.power=Math.min(5,S.power+1); burst(q.x,q.y,'#ffb02e',22); beep(990,.08,'square',.05); beep(1480,.12,'square',.04);
   S.fx.push({type:'score',x:q.x,y:q.y-10,t:0,txt:`⚡ ${S.power}/5`});
-  chat(S.power>=5?'<span class="cgo"><b>⚡ POWER LASER READY!</b></span> Press <b>G</b> to fire at Goldor!':`<span class="cgo">⚡ Power orb</span> ${S.power}/5`); }
+  chat(S.power>=5?'<span class="cgo"><b>⚡ POWER LASER READY!</b></span> Press <b>C</b> to fire at Goldor!':`<span class="cgo">⚡ Power orb</span> ${S.power}/5`); }
 function fireLaser(){
   if(!S||S.phase!=='boss'||!S.th||S.laserFire) return;
   if(S.power<5){ chat(`<span class="cg">Power Laser needs 5 power orbs (${S.power}/5).</span>`); return; }
@@ -1030,7 +1030,7 @@ function hud(){
   $('hpBar').style.transform=`scaleX(${S.hp/S.maxHp})`; $('manaBar').style.transform=`scaleX(${S.mana/1000})`;
   $('bossHp').style.transform=`scaleX(${Math.max(0,S.bossHp/S.bossMax)})`;
   $('keys').innerHTML=S.phase==='boss'
-    ? `<span class="cgr">[Q] Healing Circle</span> 355✎ · <span class="cgo">[R] Lasso</span> ${S.pulseCd>0?Math.ceil(S.pulseCd)+'s':'200✎'}${S.taunt>0?' <span class="cy">TAUNT '+S.taunt.toFixed(1)+'s</span>':''} · [Space] Jump · [F] ${WEAPON==='term'?'Terminator':'Hyperion 65✎'}${S.th?` · <span class="cgo">[G] ⚡ Laser ${S.power}/5</span>`:''}`
+    ? `<span class="cgr">[Q] Healing Circle</span> 355✎ · <span class="cgo">[R] Lasso</span> ${S.pulseCd>0?Math.ceil(S.pulseCd)+'s':'200✎'}${S.taunt>0?' <span class="cy">TAUNT '+S.taunt.toFixed(1)+'s</span>':''} · [Space] Jump · [F] ${WEAPON==='term'?'Terminator':'Hyperion 65✎'}${S.th?` · <span class="cgo">[C] ⚡ Laser ${S.power}/5</span>`:''}`
     : '[Space] Jump · [E] Terminal'+(S.th?` · <span class="cgo">⚡ Power ${S.power}/5</span>`:'');
   if(S.phase==='boss') $('party').innerHTML=S.npcs.map(n=>`<div style="color:${n.dead?'#777':n.col}">${n.name}${n.dead?' ☠'+(n.reviveT!==undefined?' <span class="cg">'+Math.ceil(n.reviveT)+'s</span>':''):''}${S.gold.target===n.id?' <span class="cr">⚠</span>':''}</div><div class="bar"><i style="transform:scaleX(${n.hp/n.max})"></i></div>`).join('');
 }
