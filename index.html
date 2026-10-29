@@ -783,7 +783,7 @@ function bossUpdate(dt){
       chat(`<span style="color:${n.col}">${n.name}</span> <span class="cgr">revived themselves!</span>`); } }
   if(!S.enraged && S.bossHp<S.bossMax/2){ S.enraged=true; S.shake=14; burst(G.x,G.y,'#ff4422',40);
     chat('<span class="cgo">[BOSS] Goldor</span>: <span class="cr"><b>ENOUGH! You will all burn!</b></span>'); chat('<span class="cr">Goldor is ENRAGED</span>: faster slams and lasers!'); beep(70,.6,'sawtooth',.08); }
-  if(S.npcs.length && S.npcs.every(n=>n.dead)){ if(S.mm){ if(!S.soloMsg){ S.soloMsg=true; chat('<span class="cr">Your whole team is dead.</span> <b>Finish Goldor yourself!</b>'); } } else return endRun(false,'team'); }
+  if(S.npcs.length && S.npcs.every(n=>n.dead)){ if(!S.soloMsg){ S.soloMsg=true; chat('<span class="cr">Your whole team is dead.</span> <b>Finish Goldor yourself!</b> They revive in 21s.'); } }
   if(S.bossHp<=0){ S.bossHp=0; return endRun(true); }
 }
 
